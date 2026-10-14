@@ -44,7 +44,7 @@ def _adapter_padrao() -> Path:
     if configurado:
         return Path(configurado)
 
-    selecao = PROJECT_ROOT / "reports" / "model-selection.json"
+    selecao = PROJECT_ROOT / "results" / "model-selection.json"
     if selecao.exists():
         try:
             dados = json.loads(selecao.read_text(encoding="utf-8"))
@@ -73,7 +73,7 @@ def _adapter_padrao() -> Path:
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
             pass
 
-    publicado = PROJECT_ROOT / "models" / "pedidoflow-qwen3-1.7b"
+    publicado = PROJECT_ROOT / "models" / "adapter_demo"
     if publicado.exists():
         return publicado
 

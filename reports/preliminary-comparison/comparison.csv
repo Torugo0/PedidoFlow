@@ -1,3 +1,0 @@
-run,dataset_split,total_examples,partial_evaluation,valid_json_rate,schema_valid_rate,action_accuracy,argument_field_accuracy,arguments_exact_match_rate,missing_fields_exact_match_rate,exact_match_rate,mean_latency_seconds,peak_vram_gb
-base-preliminary,test,20,True,1.0,0.0,1.0,0.112245,0.15,0.05,0.0,6.162322,1.318
-run_b-preliminary,test,20,True,1.0,0.9,0.9,0.983051,0.95,1.0,0.85,6.453891,1.351

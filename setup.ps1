@@ -1,5 +1,5 @@
 $ErrorActionPreference = "Stop"
-$project = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$project = (Resolve-Path $PSScriptRoot).Path
 
 function Invoke-Checked {
     param(
@@ -21,7 +21,7 @@ try {
     Invoke-Checked $python -m pip install --upgrade pip
     Invoke-Checked $python -m pip install -r requirements.txt
     Invoke-Checked $python -m pip install -e .
-    Invoke-Checked $python scripts\check_gpu.py --output reports\gpu-info.json
+    Invoke-Checked $python training\check_gpu.py --output results\gpu-info.json
 }
 finally {
     Pop-Location

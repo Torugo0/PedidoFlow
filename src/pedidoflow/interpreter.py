@@ -171,7 +171,7 @@ class OrderInterpreter:
 
     def __init__(
         self,
-        adapter_path: str | Path = "models/pedidoflow-qwen3-1.7b",
+        adapter_path: str | Path = "models/adapter_demo",
         base_model: str = "Qwen/Qwen3-1.7B",
         force_fallback: bool | None = None,
     ) -> None:

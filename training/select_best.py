@@ -24,13 +24,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Registra o melhor adapter entre os experimentos finais A/B/C."
     )
-    parser.add_argument("--report-root", type=Path, default=Path("reports"))
-    parser.add_argument("--output-root", type=Path, default=Path("outputs"))
+    parser.add_argument("--report-root", type=Path, default=Path("results"))
+    parser.add_argument("--output-root", type=Path, default=Path("models"))
     parser.add_argument("--runs", nargs="+", default=["run_a", "run_b", "run_c"])
     parser.add_argument(
         "--selection-file",
         type=Path,
-        default=Path("reports/model-selection.json"),
+        default=Path("results/model-selection.json"),
     )
     parser.add_argument("--expected-train-examples", type=int, default=2400)
     parser.add_argument("--expected-validation-examples", type=int, default=300)
@@ -46,7 +46,7 @@ def main() -> None:
     for run in args.runs:
         metrics_path = args.report_root / run / "metrics.json"
         adapter_path = args.output_root / run / "final_adapter"
-        config_path = PROJECT_ROOT / "configs" / f"{run}.json"
+        config_path = PROJECT_ROOT / "training" / "configs" / f"{run}.json"
         if not metrics_path.exists() or not adapter_path.exists():
             continue
         metricas = _metricas(metrics_path)

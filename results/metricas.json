@@ -1,0 +1,78 @@
+{
+  "status": "resultados_preliminares",
+  "aviso": "O piloto comprova o pipeline, mas nao substitui o experimento completo A/B/C.",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 4060",
+    "vram_gb": 8.0,
+    "pytorch": "2.11.0+cu128",
+    "cuda_runtime": "12.8",
+    "compute_capability": "8.9"
+  },
+  "comparacao_modelo_base_adapter": {
+    "dataset": "data/test.jsonl",
+    "dataset_sha256": "b69b7c568945edbc9527091bcea68a2e64f1bb0bf8f0eab64285e61b908c4c14",
+    "total_no_dataset": 600,
+    "exemplos_avaliados": 20,
+    "avaliacao_parcial": true,
+    "modelo_base": {
+      "valid_json_rate": 1.0,
+      "schema_valid_rate": 0.0,
+      "action_accuracy": 1.0,
+      "argument_field_accuracy": 0.112245,
+      "exact_match_rate": 0.0,
+      "mean_latency_seconds": 6.162322,
+      "peak_vram_gb": 1.318
+    },
+    "adapter_demo": {
+      "caminho_local": "models/adapter_demo",
+      "adapter_sha256": "65308c1fa674accc097a2065a76b24bd024271f9ad6ef5895e1832b058079d91",
+      "treino_preliminar_exemplos": 400,
+      "validacao_preliminar_exemplos": 100,
+      "valid_json_rate": 1.0,
+      "schema_valid_rate": 0.9,
+      "action_accuracy": 0.9,
+      "argument_field_accuracy": 0.983051,
+      "exact_match_rate": 0.85,
+      "mean_latency_seconds": 6.453891,
+      "peak_vram_gb": 1.351
+    }
+  },
+  "piloto_parametros": {
+    "dataset": "data/validation.jsonl",
+    "dataset_sha256": "506a7a9566f1b9dbee771dbddad638e877c0c8279d13f82c1cbcf8ab0f3e8e34",
+    "treino_por_run": 32,
+    "validacao_durante_treino": 16,
+    "exemplos_avaliados_por_run": 10,
+    "avaliacao_parcial": true,
+    "run_a": {
+      "lora_rank": 8,
+      "learning_rate": 0.0001,
+      "train_loss": 0.611215,
+      "schema_valid_rate": 0.0,
+      "action_accuracy": 0.8,
+      "argument_field_accuracy": 0.054054,
+      "exact_match_rate": 0.0,
+      "peak_training_vram_gb": 3.138
+    },
+    "run_b": {
+      "lora_rank": 8,
+      "learning_rate": 0.0002,
+      "train_loss": 0.41587,
+      "schema_valid_rate": 0.1,
+      "action_accuracy": 0.9,
+      "argument_field_accuracy": 0.142857,
+      "exact_match_rate": 0.1,
+      "peak_training_vram_gb": 3.138
+    },
+    "run_c": {
+      "lora_rank": 16,
+      "learning_rate": 0.0002,
+      "train_loss": 0.328157,
+      "schema_valid_rate": 0.5,
+      "action_accuracy": 0.9,
+      "argument_field_accuracy": 0.518519,
+      "exact_match_rate": 0.4,
+      "peak_training_vram_gb": 3.187
+    }
+  }
+}

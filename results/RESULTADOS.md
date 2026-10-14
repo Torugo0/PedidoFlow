@@ -35,6 +35,6 @@ selecao oficial deve usar os tres treinos completos e todo o conjunto de
 validacao, sem consultar o teste. Somente depois dessa selecao o modelo-base e
 o vencedor podem ser avaliados no conjunto de teste.
 
-Para obter resultados finais, execute `scripts/run_experiments.ps1`. O fluxo
+Para obter resultados finais, execute `run_experiments.ps1`. O fluxo
 treina A/B/C no dataset unico completo, escolhe hiperparametros pela validacao e
 abre o teste somente para o modelo base e o vencedor.

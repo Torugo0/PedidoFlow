@@ -110,7 +110,7 @@ def main() -> None:
     set_seed(seed)
 
     base_model = config.get("base_model", "Qwen/Qwen3-1.7B")
-    output_dir = args.output_dir or Path(config.get("output_dir", "outputs/experiment"))
+    output_dir = args.output_dir or Path(config.get("output_dir", "models/experiment"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
     tokenizer = AutoTokenizer.from_pretrained(base_model, use_fast=True)
@@ -252,7 +252,7 @@ def main() -> None:
     (output_dir / "training_summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    evidence_dir = PROJECT_ROOT / "reports" / "training"
+    evidence_dir = PROJECT_ROOT / "results" / "training"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     (evidence_dir / f"{output_dir.name}.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

@@ -1,10 +1,15 @@
 # Modelos locais
 
-Esta pasta pode receber manualmente um adapter publicado para demonstracao.
-Pesos e checkpoints nao sao versionados no Git; o modelo base e checkpoints
-podem ocupar varios gigabytes.
+O modelo-base `Qwen/Qwen3-1.7B` nao fica nesta pasta. Ele e baixado pelo
+Hugging Face e armazenado no cache do computador.
 
-O fluxo normal treina em `outputs/run_*/final_adapter` e registra o vencedor em
-`reports/model-selection.json`. Se o grupo quiser distribuir um adapter fora
-desse fluxo, use `models/pedidoflow-qwen3-1.7b` ou defina
-`PEDIDOFLOW_ADAPTER`.
+No computador usado no projeto, `models/adapter_demo` contem um adapter LoRA
+preliminar treinado com 400 exemplos. Ele permite demonstrar a aplicacao sem
+refazer o treino, mas nao representa o vencedor final dos experimentos A/B/C.
+
+Os pesos sao ignorados pelo Git para manter o repositorio leve. O script
+`criar_zip.ps1` inclui o adapter de demonstracao no ZIP entregue ao professor.
+
+O experimento completo cria `models/run_a`, `models/run_b` e `models/run_c` e
+registra o vencedor em `results/model-selection.json`. Depois disso, a
+aplicacao passa a carregar automaticamente o adapter vencedor.

@@ -121,7 +121,7 @@ def write_chart(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compara os relatorios do PedidoFlow.")
-    parser.add_argument("--report-root", type=Path, default=Path("reports"))
+    parser.add_argument("--report-root", type=Path, default=Path("results"))
     parser.add_argument("--include-smoke", action="store_true")
     parser.add_argument("--name-contains")
     parser.add_argument("--output-dir", type=Path)

@@ -72,7 +72,7 @@ def parse_args() -> argparse.Namespace:
         default=Path("data/test.jsonl"),
         help="JSONL de validacao ou teste; --test-file e mantido como alias.",
     )
-    parser.add_argument("--output-dir", type=Path, default=Path("reports/evaluation"))
+    parser.add_argument("--output-dir", type=Path, default=Path("results/evaluation"))
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--limit", type=int, help="Limita exemplos para teste rápido.")
     return parser.parse_args()

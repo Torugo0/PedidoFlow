@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$project = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$project = (Resolve-Path $PSScriptRoot).Path
 $python = Join-Path $project ".venv\Scripts\python.exe"
 $previousAdapter = $env:PEDIDOFLOW_ADAPTER
 $adapterWasChanged = $false

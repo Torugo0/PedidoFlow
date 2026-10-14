@@ -1,7 +1,7 @@
 {
   "name": "run_c_r16_lr2e-4",
   "base_model": "Qwen/Qwen3-1.7B",
-  "output_dir": "outputs/run_c",
+  "output_dir": "models/run_c",
   "seed": 42,
   "gradient_checkpointing": true,
   "data": {

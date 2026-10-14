@@ -14,7 +14,6 @@ data/*.db-*
 # Pesos e artefatos grandes
 models/*
 !models/README.md
-outputs/
 checkpoints/
 *.safetensors
 *.bin
@@ -22,6 +21,7 @@ checkpoints/
 *.pth
 
 # Relatorios regeneraveis e sistema
-reports/**/predictions*.jsonl
+results/**/predictions*.jsonl
+PedidoFlow-entrega.zip
 .DS_Store
 Thumbs.db

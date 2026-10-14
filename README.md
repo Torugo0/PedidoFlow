@@ -1,311 +1,228 @@
 # PedidoFlow Local
 
-O PedidoFlow e uma prova de conceito de automacao de pedidos com uma LLM
-pequena executada localmente. O usuario escreve uma solicitacao em portugues,
-o modelo escolhe uma operacao e extrai seus argumentos, e o backend valida e
-executa a acao em um banco SQLite.
+POC acadêmica que usa uma LLM pequena, executada localmente, para interpretar pedidos escritos em português e transformá-los em operações seguras de criação, consulta, alteração e cancelamento.
 
-Ele nao e um chatbot generico. O modelo so pode selecionar cinco saidas:
+O projeto não é um chatbot genérico. A LLM identifica a ação e extrai os argumentos; datas, estoque, regras de negócio, confirmação e banco ficam sob responsabilidade de código determinístico e testável.
 
-- `criar_pedido`;
-- `consultar_pedido`;
-- `cancelar_pedido`;
-- `alterar_entrega`;
-- `nao_suportada`.
+## Objetivo
 
-## Estado atual do projeto
+Empresas recebem solicitações como texto livre:
 
-A implementacao funcional esta concluida: interface, interpretacao por LLM ou
-fallback deterministico, confirmacao de datas, regras de negocio e persistencia
-SQLite funcionam de ponta a ponta. A verificacao local mais recente executou os
-**49 testes automatizados com sucesso**.
+> Cadastre para o Mercado Central duas caixas de café. Entregar na Avenida Brasil, 500 até sexta.
 
-O dataset final tambem esta pronto, com **2.400 exemplos de treino, 300 de
-validacao e 600 de teste**. As 3.300 entradas sao unicas, e os splits usam
-familias de templates separadas para reduzir vazamento entre treino e
-avaliacao.
+O PedidoFlow interpreta a mensagem, valida os dados, apresenta uma prévia e somente executa a operação após a confirmação do usuário.
 
-As evidencias de treino disponiveis ate agora sao preliminares: ha um smoke
-test, um treino reduzido do run B e um piloto reduzido A/B/C concluido na GPU.
-Eles demonstram que o pipeline funciona, mas nao
-substituem os experimentos completos. Antes da entrega academica ainda e
-necessario executar `scripts/run_experiments.ps1`, que gera
-`reports/validation`, seleciona o vencedor somente pela validacao e depois cria
-`reports/final` com a avaliacao de teste.
-
-Tambem permanecem externas ao codigo duas tarefas do grupo: capturar no VS Code
-o print da GPU funcionando e publicar o repositorio em uma URL real do GitHub.
-
-## Exemplo
-
-Entrada:
-
-> Cadastre para o Mercado Central duas caixas de cafe. Entregar na Avenida
-> Brasil, 500 ate sexta.
-
-Chamada interna produzida pela LLM:
+O JSON não é o resultado final. Ele é apenas o contrato interno entre a LLM e o backend:
 
 ```json
 {
   "acao": "criar_pedido",
   "argumentos": {
     "cliente": "Mercado Central",
-    "itens": [
-      {"produto": "cafe", "quantidade": 2, "unidade": "caixa"}
-    ],
+    "itens": [{"produto": "cafe", "quantidade": 2, "unidade": "caixa"}],
     "endereco_entrega": "Avenida Brasil, 500",
     "prazo_texto": "sexta"
-  },
-  "campos_faltantes": []
+  }
 }
 ```
 
-Se a data de referencia for `14/10/2026`, o backend resolve `sexta` para
-`16/10/2026` e pergunta:
+Depois dessa etapa, o backend executa uma ação real no banco SQLite.
 
-> Voce quis dizer sexta-feira, 16/10/2026? Confirma a criacao do pedido?
+## Funcionalidades
 
-O estoque e o banco so sao alterados depois da confirmacao.
+- criar, consultar, alterar e cancelar pedidos;
+- atualizar o estoque automaticamente;
+- identificar campos ausentes e recusar ações fora do escopo;
+- exigir confirmação para toda operação que modifica dados.
 
-## Arquitetura
+## Fluxo da solução
 
 ```text
-Solicitacao em PT-BR
-        |
-        v
-OrderInterpreter (Qwen3-1.7B + adapter LoRA)
-        |
-        v
-ToolCall: acao + argumentos + campos_faltantes
-        |
-        v
-PedidoService + DateResolver + validacoes de negocio
-        |
-        v
-Previa protegida por token e confirmacao explicita
-        |
-        v
-SQLiteRepository: pedidos, itens e estoque
+Solicitação em português
+          ↓
+Qwen3-1.7B interpreta a intenção e os campos
+          ↓
+Backend valida produto, estoque, regras e data
+          ↓
+Usuário confere a prévia e confirma
+          ↓
+Operação é executada no SQLite
 ```
 
-A LLM interpreta texto. Ela nao calcula preco, nao decide estoque, nao grava no
-banco e nao converte datas. Essas responsabilidades ficam em codigo
-deterministico e testavel.
+Essa separação impede que a LLM grave no banco, altere estoque ou invente regras diretamente.
+
+## Datas relativas e confirmação
+
+Expressões como `sexta`, `amanhã`, `depois de amanhã` e `próxima terça` são convertidas usando a data atual no fuso `America/Sao_Paulo`.
+
+Exemplo com data de referência em **14/10/2026**:
+
+```text
+Entrada: Entregar até sexta.
+Sistema: Você quis dizer sexta-feira, 16/10/2026?
+```
+
+O banco e o estoque não mudam antes da confirmação. A data exata fica vinculada à prévia para não ser recalculada caso o dia mude. Datas passadas são bloqueadas e horários são recusados, pois a POC trabalha somente com datas de entrega.
 
 ## Requisitos
 
-- Windows 10/11;
-- Python 3.10;
-- GPU NVIDIA compativel com CUDA;
-- aproximadamente 12 GB livres para ambiente, cache do modelo e checkpoints;
-- Git.
+Windows 10/11, Python 3.10, Git, GPU NVIDIA compatível com CUDA e cerca de 12 GB livres para ambiente, cache e treinamento.
 
-Ambiente validado neste computador:
+Ambiente validado: NVIDIA GeForce RTX 4060 de 8 GB, PyTorch 2.11.0, CUDA 12.8, compute capability 8.9 e QLoRA 4-bit NF4 em BF16.
 
-- NVIDIA GeForce RTX 4060, 8 GB;
-- PyTorch 2.11.0 com CUDA 12.8;
-- compute capability 8.9;
-- QLoRA em BF16;
-- pico de 3,14 GB de VRAM no smoke training.
+## Instalação e execução
 
-O pacote PyTorch `cu128` ja inclui o runtime CUDA usado por este projeto; por
-isso o Toolkit completo e o comando `nvcc` nao sao necessarios para executar
-treino e inferencia. O driver 610.88 e compativel e o teste matricial CUDA foi
-executado com sucesso. Se a disciplina exigir especificamente um print de
-`nvcc --version`, a instalacao do CUDA Toolkit e uma evidencia adicional,
-separada do runtime que ja esta funcionando.
-
-## Instalacao
-
-No PowerShell, dentro da pasta do projeto:
+Abra o PowerShell na pasta do projeto:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install -e .
+.\setup.ps1
+.\run.ps1
 ```
 
-Valide a GPU com uma operacao CUDA real:
+A interface estará em [http://127.0.0.1:7860](http://127.0.0.1:7860).
+
+O `setup.ps1` cria o ambiente virtual e instala as dependências. O `run.ps1` usa `models/adapter_demo`; sem ele, a aplicação ainda funciona com o interpretador determinístico de contingência.
+
+### Uso da interface
+
+1. Escreva a solicitação e clique em **Analisar solicitação**.
+2. Confira a ação, os campos e a data resolvida.
+3. Marque a confirmação e clique em **Executar operação**.
+4. Confira o protocolo, os pedidos e o estoque.
+
+Exemplos:
+
+```text
+Cadastre duas caixas de café para o Mercado Central, na Rua das Flores, 120, com entrega na sexta.
+Consulte o pedido 1.
+Altere a entrega do pedido 1 para a próxima terça.
+```
+
+## Modelo e dataset
+
+Foi escolhido o `Qwen/Qwen3-1.7B` por ser pequeno, multilíngue e compatível com QLoRA em uma GPU de 8 GB.
+
+| Conjunto | Exemplos |
+|---|---:|
+| Treino | 2.400 |
+| Validação | 300 |
+| Teste | 600 |
+
+As 3.300 entradas são únicas. Os três conjuntos usam famílias de templates diferentes para reduzir vazamento entre treino e avaliação.
+
+## Treinamento e parâmetros
+
+Modelo, dataset, seed, épocas e quantização permanecem fixos. Os experimentos variam taxa de aprendizado e rank LoRA:
+
+| Experimento | Rank | Alpha | Learning rate |
+|---|---:|---:|---:|
+| A | 8 | 16 | 1e-4 |
+| B | 8 | 16 | 2e-4 |
+| C | 16 | 32 | 2e-4 |
+
+Execute o processo completo com:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\check_gpu.py --output reports\gpu-info.json
+.\run_experiments.ps1
 ```
 
-O resultado deve conter `"status": "GPU CUDA funcionando"` e o nome da placa.
+O script treina A/B/C na GPU, compara os três somente na validação, escolhe o melhor adapter e, por fim, compara o vencedor com o modelo-base no teste. Métricas e gráficos são gravados em `results/`. O conjunto de teste não é usado para escolher hiperparâmetros.
 
-## Executar a aplicacao
+## Resultados preliminares
 
-```powershell
-.\.venv\Scripts\python.exe app.py
-```
+Uma execução reduzida validou todo o pipeline na RTX 4060. Em 20 exemplos:
 
-O navegador abrira em `http://127.0.0.1:7860`.
+| Métrica | Modelo-base | Adapter B |
+|---|---:|---:|
+| JSON válido | 100% | 100% |
+| Schema válido | 0% | 90% |
+| Ação correta | 100% | 90% |
+| Campos corretos | 11,22% | 98,31% |
+| Correspondência exata | 0% | 85% |
 
-Fluxo da tela:
+Esses números comprovam a execução do pipeline, mas não substituem o experimento completo. Consulte `results/RESULTADOS.md`. A avaliação também registra latência, pico de VRAM e resultados por ação.
 
-1. Digite uma solicitacao.
-2. Clique em **Analisar solicitacao**.
-3. Confira a chamada de funcao e a data resolvida.
-4. Marque a confirmacao.
-5. Clique em **Executar operacao**.
-6. Consulte o protocolo, pedidos e estoque.
-
-Enquanto nenhum adapter escolhido estiver disponivel, a tela usa um parser local
-deterministico e identifica claramente esse modo. Depois dos experimentos,
-`training/select_best.py` registra o vencedor em `reports/model-selection.json`.
-Tambem e possivel definir explicitamente o caminho em `PEDIDOFLOW_ADAPTER`.
-
-Neste checkout existe um adapter **preliminar** B para demonstrar a integracao,
-mas ele nao e selecionado automaticamente como vencedor final. Para testa-lo de
-forma consciente no PowerShell:
-
-```powershell
-.\scripts\run_app.ps1 -AdapterPath "outputs\run_b\final_adapter"
-```
-
-## Dataset sintetico
-
-Gere os tres conjuntos reproduziveis:
-
-```powershell
-.\.venv\Scripts\python.exe training\generate_dataset.py
-```
-
-Sao gerados:
-
-- `data/train.jsonl`: 2.400 exemplos;
-- `data/validation.jsonl`: 300 exemplos;
-- `data/test.jsonl`: 600 exemplos.
-
-As 3.300 entradas geradas sao unicas. As familias de templates sao diferentes
-em cada split, portanto uma frase-modelo usada no treino nao aparece no teste.
-
-## Treinamento
-
-O modelo escolhido e `Qwen/Qwen3-1.7B`, ajustado com QLoRA 4-bit NF4. Os tres
-experimentos variam apenas learning rate e rank LoRA:
-
-```powershell
-.\.venv\Scripts\python.exe training\train.py --config configs\run_a.json
-.\.venv\Scripts\python.exe training\train.py --config configs\run_b.json
-.\.venv\Scripts\python.exe training\train.py --config configs\run_c.json
-```
-
-Para validar rapidamente a instalacao antes de um treino longo:
-
-```powershell
-.\.venv\Scripts\python.exe training\train.py `
-  --config configs\run_a.json `
-  --output-dir outputs\smoke `
-  --max-train-samples 16 `
-  --max-eval-samples 8
-```
-
-Para executar um piloto comparavel A/B/C na GPU (32 exemplos por run), use:
-
-```powershell
-.\scripts\run_pilot.ps1
-```
-
-O piloto verifica os tres conjuntos de hiperparametros, mas seus numeros nao
-substituem o experimento final com os 2.400 exemplos.
-
-O piloto A/B/C ja foi concluido: cada run usou 32 exemplos de treino, 16 de
-validacao e uma avaliacao parcial de 10 exemplos. O run C obteve o melhor
-resultado nesse recorte, mas isso nao o torna vencedor final. Os numeros estao
-em `reports/RESULTADOS_PRELIMINARES.md`.
-
-O treino preliminar e o piloto servem como evidencia de execucao local na GPU.
-Os diretorios `reports/validation`, `reports/final` e o arquivo
-`reports/model-selection.json` so representam o resultado academico final
-depois da execucao completa de:
-
-```powershell
-.\scripts\run_experiments.ps1
-```
-
-Enquanto esses artefatos nao existirem com status final, nenhum adapter e
-anunciado automaticamente como vencedor.
-
-Os scripts abortam se CUDA nao estiver disponivel, evitando executar os
-experimentos em CPU por engano.
-
-Avalie A/B/C no conjunto de validacao e selecione o vencedor por essas metricas,
-sem consultar o conjunto de teste:
-
-```powershell
-.\.venv\Scripts\python.exe training\evaluate.py `
-  --adapter-path outputs\run_b\final_adapter `
-  --dataset-file data\validation.jsonl `
-  --output-dir reports\validation\run_b
-.\.venv\Scripts\python.exe training\select_best.py `
-  --report-root reports\validation
-```
-
-## Avaliacao
-
-Depois da selecao por validacao, avalie o modelo original e apenas o adapter
-vencedor no conjunto de teste. O script `scripts/run_experiments.ps1` automatiza
-essa separacao. Exemplo do modelo original:
-
-```powershell
-.\.venv\Scripts\python.exe training\evaluate.py --output-dir reports\base
-```
-
-Exemplo do adapter ja escolhido:
-
-```powershell
-.\.venv\Scripts\python.exe training\evaluate.py `
-  --adapter-path outputs\run_b\final_adapter `
-  --output-dir reports\final\run_b
-```
-
-Metricas calculadas:
-
-- JSON valido;
-- conformidade com o schema;
-- acuracia da acao;
-- acuracia de campos dos argumentos;
-- exact match dos argumentos;
-- exact match da chamada completa;
-- deteccao de campos faltantes;
-- latencia media;
-- pico de VRAM;
-- resultados separados por acao.
-
-## Testes
+## Testes automatizados
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-Os testes cobrem datas relativas, interpretacao, campos faltantes, confirmacao
-unica, criacao do pedido, alteracao de estoque, dataset, metricas e integridade
-dos artefatos. A ultima execucao local terminou com **49 testes aprovados**.
+A última verificação aprovou **49 testes**, cobrindo datas, interpretação, campos ausentes, confirmação, operações no banco, dataset, métricas e artefatos.
 
-## Organizacao
+## Evidência da GPU
 
-```text
-app.py                     Interface Gradio
-src/pedidoflow/            Dominio, datas, banco, servico e interpretador
-training/                  Dataset, fine-tuning, avaliacao e metricas
-configs/                   Hiperparametros dos experimentos A, B e C
-scripts/                   Diagnostico de GPU e automacoes PowerShell
-tests/                     Testes automatizados
-data/                      Splits sinteticos e banco local ignorado pelo Git
-reports/                   Evidencias e resultados
-models/                    Local opcional para adapters; pesos ignorados pelo Git
-docs/                      Arquitetura, requisitos e roteiro de apresentacao
+No terminal integrado do VS Code, execute:
+
+```powershell
+nvidia-smi
+.\.venv\Scripts\python.exe training\check_gpu.py --output results\gpu-info.json
 ```
 
-Mais detalhes estao em [docs/REQUISITOS.md](docs/REQUISITOS.md),
-[docs/EXPERIMENTOS.md](docs/EXPERIMENTOS.md) e
-[docs/APRESENTACAO.md](docs/APRESENTACAO.md). A publicacao esta descrita em
-[docs/GITHUB.md](docs/GITHUB.md).
+O diagnóstico realiza uma multiplicação de matrizes na GPU. No print da entrega, deixe visíveis o VS Code, a RTX 4060, PyTorch, CUDA e `GPU CUDA funcionando`. Salve como `results/gpu-vscode.png`.
 
-## Observacao sobre pesos
+## Estrutura
 
-Checkpoints e arquivos `.safetensors` nao sao enviados ao GitHub. Eles podem ter
-varios gigabytes. O repositorio versiona codigo, configuracoes, dataset,
-metricas e instrucoes para reproduzir o adapter.
+```text
+app.py                 Interface Gradio
+src/pedidoflow/        Domínio, datas, banco e interpretação
+training/              Dataset, treino, avaliação e diagnóstico
+training/configs/      Parâmetros A, B e C
+data/                  Treino, validação e teste
+models/adapter_demo/   Adapter preliminar incluído no ZIP
+results/               Métricas, gráficos e evidências
+tests/                 Testes automatizados
+setup.ps1              Prepara o ambiente
+run.ps1                Inicia a aplicação
+run_experiments.ps1    Executa os experimentos completos
+criar_zip.ps1          Gera o pacote da entrega
+```
+
+## Atendimento aos requisitos do CP
+
+| Requisito | Atendimento |
+|---|---|
+| Problema específico | Automação de pedidos em PT-BR |
+| LLM escolhida | Qwen3-1.7B |
+| Treino local | Pipeline QLoRA validado na RTX 4060 |
+| Parâmetros diferentes | Experimentos A, B e C |
+| Avaliação | Métricas automáticas e comparação com o modelo-base |
+| GPU | Treino e avaliação interrompem sem CUDA |
+| Frontend | Gradio com prévia e confirmação |
+| Print no VS Code | Comandos e destino preparados |
+| GitHub | Código, dataset, resultados e reprodução documentados |
+
+## Onde estão os pesos?
+
+O modelo-base não fica no projeto: ele é baixado do Hugging Face e armazenado no cache local. O ZIP acadêmico inclui somente o adapter de demonstração em `models/adapter_demo` (aproximadamente 44 MB).
+
+No GitHub, pesos e checkpoints são ignorados para evitar um repositório pesado. O código, as configurações, o dataset e as métricas permitem reproduzir o treinamento.
+
+## GitHub e ZIP da entrega
+
+Para publicar em um repositório vazio:
+
+```powershell
+git remote add origin https://github.com/USUARIO/REPOSITORIO.git
+git push -u origin main
+```
+
+Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
+
+Crie o pacote do professor com:
+
+```powershell
+.\criar_zip.ps1
+```
+
+O ZIP não inclui ambiente virtual, caches, checkpoints intermediários ou histórico Git, mas inclui o adapter de demonstração.
+
+## Estado da entrega
+
+- aplicação, frontend, banco, datas, dataset e testes: concluídos;
+- smoke test, treino reduzido e piloto A/B/C em GPU: concluídos;
+- experimento completo A/B/C: pendente de execução;
+- print da GPU no VS Code: pendente de captura;
+- publicação no GitHub: pendente de configurar o remoto.
+
+Os resultados preliminares não são apresentados como finais. Depois da execução completa, `results/RESULTADOS.md` deve receber o modelo vencedor e as métricas do conjunto de teste.
