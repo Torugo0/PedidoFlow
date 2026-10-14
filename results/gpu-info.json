@@ -8,7 +8,7 @@
   "gpu": "NVIDIA GeForce RTX 4060",
   "compute_capability": "8.9",
   "vram_total_gb": 8.0,
-  "teste_matriz_ms": 56.85,
+  "teste_matriz_ms": 57.73,
   "pico_vram_teste_mb": 56.12,
-  "checksum": -40.9095
+  "checksum": -18.615
 }

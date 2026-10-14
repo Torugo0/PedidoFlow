@@ -79,7 +79,7 @@ Abra o PowerShell na pasta do projeto:
 .\run.ps1
 ```
 
-A interface estará em [http://127.0.0.1:7860](http://127.0.0.1:7860).
+A interface estará em [http://127.0.0.1:7860](http://127.0.0.1:7860). Mantenha o terminal do `run.ps1` aberto enquanto estiver usando o sistema.
 
 O `setup.ps1` cria o ambiente virtual e instala as dependências. O `run.ps1` usa `models/adapter_demo`; sem ele, a aplicação ainda funciona com o interpretador determinístico de contingência.
 
@@ -89,6 +89,10 @@ O `setup.ps1` cria o ambiente virtual e instala as dependências. O `run.ps1` us
 2. Confira a ação, os campos e a data resolvida.
 3. Marque a confirmação e clique em **Executar operação**.
 4. Confira o protocolo, os pedidos e o estoque.
+
+### Banco de dados
+
+O banco SQLite é criado automaticamente em `data/pedidoflow.db` quando a aplicação inicia. Ele possui as tabelas `produtos`, `pedidos` e `pedido_itens`. O arquivo do banco e seus auxiliares `-wal` e `-shm` são dados locais de execução e não são enviados ao GitHub.
 
 Exemplos:
 
@@ -169,13 +173,12 @@ src/pedidoflow/        Domínio, datas, banco e interpretação
 training/              Dataset, treino, avaliação e diagnóstico
 training/configs/      Parâmetros A, B e C
 data/                  Treino, validação e teste
-models/adapter_demo/   Adapter preliminar incluído no ZIP
+models/adapter_demo/   Adapter preliminar usado na demonstração
 results/               Métricas, gráficos e evidências
 tests/                 Testes automatizados
 setup.ps1              Prepara o ambiente
 run.ps1                Inicia a aplicação
 run_experiments.ps1    Executa os experimentos completos
-criar_zip.ps1          Gera o pacote da entrega
 ```
 
 ## Atendimento aos requisitos do CP
@@ -194,11 +197,11 @@ criar_zip.ps1          Gera o pacote da entrega
 
 ## Onde estão os pesos?
 
-O modelo-base não fica no projeto: ele é baixado do Hugging Face e armazenado no cache local. O ZIP acadêmico inclui somente o adapter de demonstração em `models/adapter_demo` (aproximadamente 44 MB).
+O modelo-base não fica no projeto: ele é baixado do Hugging Face e armazenado no cache local. O adapter de demonstração está em `models/adapter_demo` (aproximadamente 44 MB).
 
 No GitHub, pesos e checkpoints são ignorados para evitar um repositório pesado. O código, as configurações, o dataset e as métricas permitem reproduzir o treinamento.
 
-## GitHub e ZIP da entrega
+## GitHub e entrega
 
 Para publicar em um repositório vazio:
 
@@ -209,13 +212,7 @@ git push -u origin main
 
 Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
 
-Crie o pacote do professor com:
-
-```powershell
-.\criar_zip.ps1
-```
-
-O ZIP não inclui ambiente virtual, caches, checkpoints intermediários ou histórico Git, mas inclui o adapter de demonstração.
+Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.venv`, `.git`, caches, `data/pedidoflow.db` ou checkpoints intermediários.
 
 ## Estado da entrega
 
