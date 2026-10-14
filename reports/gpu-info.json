@@ -1,0 +1,14 @@
+{
+  "status": "GPU CUDA funcionando",
+  "sistema": "Windows-10-10.0.26200-SP0",
+  "python": "3.10.0",
+  "pytorch": "2.11.0+cu128",
+  "cuda_pytorch": "12.8",
+  "driver_nvidia": "610.88",
+  "gpu": "NVIDIA GeForce RTX 4060",
+  "compute_capability": "8.9",
+  "vram_total_gb": 8.0,
+  "teste_matriz_ms": 56.85,
+  "pico_vram_teste_mb": 56.12,
+  "checksum": -40.9095
+}

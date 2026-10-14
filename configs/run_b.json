@@ -1,0 +1,31 @@
+{
+  "name": "run_b_r8_lr2e-4",
+  "base_model": "Qwen/Qwen3-1.7B",
+  "output_dir": "outputs/run_b",
+  "seed": 42,
+  "gradient_checkpointing": true,
+  "data": {
+    "train": "data/train.jsonl",
+    "validation": "data/validation.jsonl"
+  },
+  "lora": {
+    "r": 8,
+    "alpha": 16,
+    "dropout": 0.05,
+    "target_modules": "all-linear"
+  },
+  "training": {
+    "epochs": 2,
+    "learning_rate": 0.0002,
+    "batch_size": 1,
+    "eval_batch_size": 1,
+    "gradient_accumulation_steps": 8,
+    "max_length": 512,
+    "warmup_ratio": 0.03,
+    "weight_decay": 0.01,
+    "lr_scheduler_type": "cosine",
+    "optim": "paged_adamw_8bit",
+    "logging_steps": 10,
+    "save_total_limit": 2
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "experiment": "run_c_r16_lr2e-4",
+  "base_model": "Qwen/Qwen3-1.7B",
+  "adapter_path": "outputs/pilot_run_c/final_adapter",
+  "config_path": "configs/run_c.json",
+  "config_sha256": "dbeef990e0d26bfc12419c39a17ed6898ab1fbef15fb1e724f0c584ef17f2c91",
+  "train_dataset_sha256": "39fe8f7b45f09c761ba5d4fbefff343efab4fd6f50cd40b2fb4aaedef151e9dd",
+  "validation_dataset_sha256": "506a7a9566f1b9dbee771dbddad638e877c0c8279d13f82c1cbcf8ab0f3e8e34",
+  "adapter_sha256": "0830c5ac4008ba276aacb07f1b77e8aa72b3847a96bc543d0726ff7c58cb93dc",
+  "gpu": "NVIDIA GeForce RTX 4060",
+  "cuda_runtime": "12.8",
+  "compute_dtype": "bfloat16",
+  "peak_vram_gb": 3.187,
+  "train_examples": 32,
+  "validation_examples": 16,
+  "train_metrics": {
+    "train_runtime": 61.7002,
+    "train_samples_per_second": 1.037,
+    "train_steps_per_second": 0.13,
+    "total_flos": 121070450331648.0,
+    "train_loss": 0.32815656065940857,
+    "epoch": 2.0
+  }
+}

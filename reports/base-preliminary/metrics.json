@@ -1,0 +1,56 @@
+{
+  "total_examples": 20,
+  "valid_json_rate": 1.0,
+  "schema_valid_rate": 0.0,
+  "action_accuracy": 1.0,
+  "argument_field_accuracy": 0.112245,
+  "arguments_exact_match_rate": 0.15,
+  "missing_fields_exact_match_rate": 0.05,
+  "exact_match_rate": 0.0,
+  "by_action": {
+    "alterar_entrega": {
+      "total": 5,
+      "action_accuracy": 1.0,
+      "arguments_exact_match_rate": 0.0,
+      "exact_match_rate": 0.0
+    },
+    "cancelar_pedido": {
+      "total": 3,
+      "action_accuracy": 1.0,
+      "arguments_exact_match_rate": 0.0,
+      "exact_match_rate": 0.0
+    },
+    "consultar_pedido": {
+      "total": 4,
+      "action_accuracy": 1.0,
+      "arguments_exact_match_rate": 0.0,
+      "exact_match_rate": 0.0
+    },
+    "criar_pedido": {
+      "total": 4,
+      "action_accuracy": 1.0,
+      "arguments_exact_match_rate": 0.0,
+      "exact_match_rate": 0.0
+    },
+    "nao_suportada": {
+      "total": 4,
+      "action_accuracy": 1.0,
+      "arguments_exact_match_rate": 0.75,
+      "exact_match_rate": 0.0
+    }
+  },
+  "base_model": "Qwen/Qwen3-1.7B",
+  "adapter_path": null,
+  "adapter_sha256": null,
+  "dataset_path": "data/test.jsonl",
+  "dataset_sha256": "b69b7c568945edbc9527091bcea68a2e64f1bb0bf8f0eab64285e61b908c4c14",
+  "dataset_split": "test",
+  "dataset_total_examples": 600,
+  "evaluation_limit": 20,
+  "partial_evaluation": true,
+  "gpu": "NVIDIA GeForce RTX 4060",
+  "inference_quantization": "4-bit NF4 double quantization",
+  "inference_compute_dtype": "bfloat16",
+  "mean_latency_seconds": 6.162322,
+  "peak_vram_gb": 1.318
+}

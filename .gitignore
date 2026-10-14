@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+.env
+
+# Dados de execucao local
+data/*.db
+data/*.db-*
+
+# Pesos e artefatos grandes
+models/*
+!models/README.md
+outputs/
+checkpoints/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Relatorios regeneraveis e sistema
+reports/**/predictions*.jsonl
+.DS_Store
+Thumbs.db
