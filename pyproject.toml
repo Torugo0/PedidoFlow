@@ -6,6 +6,11 @@ build-backend = "setuptools.build_meta"
 name = "pedidoflow-local"
 version = "0.1.0"
 description = "Automacao local de operacoes de pedidos com Qwen3 e QLoRA"
+authors = [
+    { name = "Gabriel Machado Carrara Pimentel" },
+    { name = "Lourenzo Ramos" },
+    { name = "Vitor Hugo Gonçalves Rodrigues" },
+]
 requires-python = ">=3.10,<3.15"
 
 [tool.setuptools.packages.find]

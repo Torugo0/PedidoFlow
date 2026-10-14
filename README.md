@@ -4,6 +4,14 @@ POC acadêmica que usa uma LLM pequena, executada localmente, para interpretar p
 
 O projeto não é um chatbot genérico. A LLM identifica a ação e extrai os argumentos; datas, estoque, regras de negócio, confirmação e banco ficam sob responsabilidade de código determinístico e testável.
 
+## Integrantes
+
+| Integrante | RM |
+|---|---:|
+| Gabriel Machado Carrara Pimentel | 99880 |
+| Lourenzo Ramos | 99951 |
+| Vitor Hugo Gonçalves Rodrigues | 97758 |
+
 ## Objetivo
 
 Empresas recebem solicitações como texto livre:
