@@ -86,6 +86,10 @@ _DIAS_PATTERN = (
     r"(?:pr[oó]xim[ao]\s+)?(?:segunda(?:-feira)?|ter[cç]a(?:-feira)?|"
     r"quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|s[aá]bado|domingo)"
 )
+_DATA_EXPLICITA_PATTERN = (
+    r"(?:\d{4}-\d{2}-\d{2}|(?:dia\s+)?\d{1,2}[/.-]\d{1,2}"
+    r"(?:[/.-]\d{2,4})?)"
+)
 
 _HORARIO_SUFFIX = re.compile(
     r"^\s+(?:(?:[aà]s?\s+)?\d{1,2}(?::\d{2}|h\d{0,2})?"
@@ -136,6 +140,48 @@ def _reconcile_missing_fields(call: ToolCall) -> ToolCall:
         ):
             missing.append("novo_endereco_ou_novo_prazo_texto")
     return call.model_copy(update={"campos_faltantes": missing})
+
+
+def _reconcile_with_deterministic_evidence(
+    model_call: ToolCall, deterministic_call: ToolCall
+) -> ToolCall:
+    """Combina a decisão da LLM com evidências explícitas do texto.
+
+    A ação continua sendo escolhida pela LLM. A combinação só acontece quando
+    o interpretador determinístico reconhece a mesma ação. Nesse caso, os
+    campos que a LLM deixou vazios são completados e prazo/endereço, que têm
+    delimitadores objetivos no texto, usam a extração determinística.
+    """
+
+    model_action = getattr(model_call.acao, "value", model_call.acao)
+    deterministic_action = getattr(
+        deterministic_call.acao, "value", deterministic_call.acao
+    )
+    if model_action != deterministic_action:
+        return model_call
+
+    arguments = dict(model_call.argumentos)
+    deterministic_arguments = deterministic_call.argumentos
+
+    # Completa somente lacunas: os demais argumentos continuam sendo os que a
+    # LLM produziu. Isso preserva o papel do modelo como interpretador central.
+    for field, value in deterministic_arguments.items():
+        if value and not arguments.get(field):
+            arguments[field] = value
+
+    # Estes campos possuem marcadores textuais claros ("entregar", "até",
+    # dias da semana etc.). Quando encontrados, são evidência mais segura do
+    # que uma fronteira livre gerada pelo modelo.
+    trusted_fields_by_action = {
+        "criar_pedido": ("endereco_entrega", "prazo_texto"),
+        "alterar_entrega": ("novo_endereco", "novo_prazo_texto"),
+    }
+    for field in trusted_fields_by_action.get(model_action, ()):
+        value = deterministic_arguments.get(field)
+        if value:
+            arguments[field] = value
+
+    return model_call.model_copy(update={"argumentos": arguments})
 
 
 def _json_da_resposta(texto: str) -> dict[str, Any]:
@@ -215,6 +261,10 @@ class OrderInterpreter:
         if self._ensure_model():
             try:
                 resultado = self._interpret_with_model(texto)
+                evidencia = self._interpret_deterministic(texto)
+                resultado = _reconcile_with_deterministic_evidence(
+                    resultado, evidencia
+                )
                 self.last_backend = "adapter_qwen"
                 return _reconcile_missing_fields(resultado)
             except (
@@ -472,7 +522,9 @@ class OrderInterpreter:
         correspondencia = re.search(
             r"\b(?:entregar|entrega|endere[cç]o(?:\s+de\s+entrega)?)"
             r"\s*(?:é|:)?\s*(?:em|na|no|para|pra)?\s*"
-            rf"(.+?)(?=\s+(?:at[eé]\s+)?(?:{_DIAS_PATTERN}|hoje|amanh[aã]|depois\s+de\s+amanh[aã])\b|;|$)",
+            rf"(.+?)(?=\s+(?:(?:at[eé]|para|pra)\s+)?"
+            rf"(?:{_DIAS_PATTERN}|hoje|amanh[aã]|depois\s+de\s+amanh[aã]|"
+            rf"{_DATA_EXPLICITA_PATTERN})\b|;|$)",
             texto,
             flags=re.IGNORECASE,
         )

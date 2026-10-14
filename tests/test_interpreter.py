@@ -99,6 +99,39 @@ def test_campos_faltantes_da_llm_sao_reconciliados_com_os_argumentos():
     assert reconciliada.campos_faltantes == []
 
 
+def test_adapter_usa_evidencia_do_texto_para_separar_endereco_e_prazo(monkeypatch):
+    interpretador = OrderInterpreter()
+    saida_valida_mas_imprecisa = ToolCall(
+        acao=Acao.CRIAR_PEDIDO,
+        argumentos={
+            "cliente": "Mercado Central",
+            "itens": [
+                {"produto": "café", "quantidade": 2, "unidade": "caixa"},
+                {"produto": "açúcar", "quantidade": 5, "unidade": "pacote"},
+            ],
+            "endereco_entrega": "Av. Brasil, 500 até sexta",
+        },
+        campos_faltantes=["prazo_texto"],
+    )
+    monkeypatch.setattr(interpretador, "_ensure_model", lambda: True)
+    monkeypatch.setattr(
+        interpretador,
+        "_interpret_with_model",
+        lambda _texto: saida_valida_mas_imprecisa,
+    )
+
+    chamada = interpretador.interpret(
+        "Cadastre para o Mercado Central duas caixas de café e cinco pacotes "
+        "de açúcar. Entregar na Av. Brasil, 500 até sexta."
+    )
+
+    assert chamada.argumentos["endereco_entrega"] == "Av. Brasil, 500"
+    assert chamada.argumentos["prazo_texto"].casefold() == "sexta"
+    assert chamada.campos_faltantes == []
+    assert interpretador.last_backend == "adapter_qwen"
+    assert "adapter Qwen treinado" in interpretador.backend_status
+
+
 def test_cliente_nao_inclui_a_preposicao_com_antes_dos_itens():
     chamada = criar_interpretador().interpret(
         "Crie um pedido para Mercado Central com 2 caixas de café, "
@@ -116,6 +149,17 @@ def test_numero_no_nome_da_rua_nao_e_inventado_como_prazo():
 
     assert "prazo_texto" not in chamada.argumentos
     assert "prazo_texto" in chamada.campos_faltantes
+
+
+def test_data_numerica_e_separada_do_endereco():
+    chamada = criar_interpretador().interpret(
+        "Crie um pedido para Mercado Central com 2 caixas de café, "
+        "entrega na Av. Brasil, 500 até 20/10/2026."
+    )
+
+    assert chamada.argumentos["endereco_entrega"] == "Av. Brasil, 500"
+    assert chamada.argumentos["prazo_texto"] == "20/10/2026"
+    assert chamada.campos_faltantes == []
 
 
 def test_fallback_preserva_horario_para_o_backend_poder_rejeitar():

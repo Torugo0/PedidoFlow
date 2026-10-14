@@ -1,13 +1,11 @@
-"""Interface local do PedidoFlow.
+"""Interface comercial local do PedidoFlow.
 
-Execute com ``python app.py``. A tela usa um fluxo de duas etapas: primeiro a
-solicitação é analisada e exibida como uma prévia editável; somente depois de
-uma confirmação explícita a operação pode alterar o banco.
+Execute com ``python app.py``. A pessoa descreve a operação em linguagem
+natural, revisa uma prévia legível e confirma sem preencher campos técnicos.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import sys
@@ -26,7 +24,6 @@ if str(SRC_DIR) not in sys.path:
 
 from pedidoflow import PedidoService, PreviewAcao, SQLiteRepository, ToolCall  # noqa: E402
 from pedidoflow.artifacts import sha256_directory, sha256_file  # noqa: E402
-from pedidoflow.generation import strict_json_loads  # noqa: E402
 from pedidoflow.interpreter import OrderInterpreter  # noqa: E402
 
 
@@ -88,28 +85,6 @@ def _dump_model(modelo: Any) -> dict[str, Any]:
     return modelo.dict()
 
 
-def _tool_call_do_editor(conteudo: str) -> ToolCall:
-    try:
-        dados = strict_json_loads(conteudo)
-    except (json.JSONDecodeError, ValueError) as erro:
-        detalhe = getattr(erro, "msg", str(erro))
-        raise ValueError(f"A prévia não é um JSON válido: {detalhe}.") from erro
-    if hasattr(ToolCall, "model_validate"):
-        return ToolCall.model_validate(dados)
-    return ToolCall.parse_obj(dados)
-
-
-def _json_tool_call(tool_call: ToolCall) -> str:
-    return json.dumps(_dump_model(tool_call), ensure_ascii=False, indent=2)
-
-
-def _fingerprint(tool_call: ToolCall) -> str:
-    canonico = json.dumps(
-        _dump_model(tool_call), ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
-    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
-
-
 def _valor_enum(valor: Any) -> Any:
     return getattr(valor, "value", valor)
 
@@ -143,29 +118,112 @@ def _tabela_pedidos(service: PedidoService) -> list[list[Any]]:
     ]
 
 
+_CAMPOS_AMIGAVEIS = {
+    "cliente": "nome do cliente",
+    "itens": "produtos e quantidades",
+    "endereco_entrega": "endereço de entrega",
+    "prazo_texto": "data de entrega",
+    "numero_pedido": "número do pedido",
+    "motivo": "motivo do cancelamento",
+    "novo_endereco ou novo_prazo_texto": "novo endereço ou nova data de entrega",
+    "novo_endereco_ou_novo_prazo_texto": "novo endereço ou nova data de entrega",
+}
+
+
+def _moeda(valor: Any) -> str:
+    try:
+        numero = float(valor)
+    except (TypeError, ValueError):
+        numero = 0.0
+    return f"R$ {numero:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _erros_amigaveis(erros: list[str]) -> list[str]:
+    mensagens: list[str] = []
+    for erro in erros:
+        if erro.casefold().startswith("campos obrigatorios ausentes:"):
+            campos_texto = erro.split(":", 1)[1].strip(" .")
+            campos = [campo.strip() for campo in campos_texto.split(",")]
+            nomes = [_CAMPOS_AMIGAVEIS.get(campo, campo.replace("_", " ")) for campo in campos]
+            mensagens.append("Não consegui identificar: " + ", ".join(nomes) + ".")
+        else:
+            mensagens.append(erro)
+    return mensagens
+
+
 def _confirmacao_markdown(preview: Any) -> str:
-    partes = [f"### Prévia da ação\n\n{preview.resumo}"]
-    if preview.pergunta_confirmacao:
-        titulo = (
-            "Confirme a data"
-            if "você quis dizer" in preview.pergunta_confirmacao.casefold()
-            else "Confirme a operação"
+    """Apresenta a prévia como uma revisão comercial, sem expor JSON."""
+
+    if not preview.pode_executar:
+        mensagens = _erros_amigaveis(preview.erros)
+        itens = "\n".join(f"- {mensagem}" for mensagem in mensagens)
+        instrucao = (
+            "Ajuste a frase acima com essas informações e clique em "
+            "**Entender solicitação** novamente."
         )
-        partes.append(f"### {titulo}\n\n⚠️ **{preview.pergunta_confirmacao}**")
-    elif preview.requer_confirmacao:
-        partes.append("### Confirmação\n\nConfira os dados antes de executar a ação.")
+        return f"### Preciso de mais informações\n\n{itens}\n\n{instrucao}"
+
+    argumentos = preview.argumentos
+    acao = _valor_enum(preview.acao)
+    partes: list[str] = []
+
+    if acao == "criar_pedido":
+        partes.append("### Confira o pedido")
+        partes.append(f"**Cliente:** {argumentos.get('cliente', '—')}")
+        linhas_itens = []
+        for item in argumentos.get("itens", []):
+            linhas_itens.append(
+                f"- **{item.get('quantidade')} {item.get('unidade')}** de "
+                f"{item.get('produto')}"
+            )
+        partes.append("**Produtos:**\n" + ("\n".join(linhas_itens) or "- —"))
+        partes.append(f"**Endereço:** {argumentos.get('endereco_entrega', '—')}")
+        partes.append(
+            f"**Entrega:** {argumentos.get('data_entrega_formatada', '—')}"
+        )
+        partes.append(f"**Total estimado:** {_moeda(argumentos.get('total'))}")
+    elif acao == "cancelar_pedido":
+        partes.extend(
+            [
+                "### Confira o cancelamento",
+                f"**Pedido:** #{argumentos.get('numero_pedido', '—')}",
+                f"**Motivo:** {argumentos.get('motivo', '—')}",
+            ]
+        )
+    elif acao == "alterar_entrega":
+        partes.append("### Confira a alteração")
+        partes.append(f"**Pedido:** #{argumentos.get('numero_pedido', '—')}")
+        if argumentos.get("novo_endereco"):
+            partes.append(f"**Novo endereço:** {argumentos['novo_endereco']}")
+        if argumentos.get("nova_data_entrega_formatada"):
+            partes.append(
+                f"**Nova entrega:** {argumentos['nova_data_entrega_formatada']}"
+            )
+    else:
+        partes.extend(["### Pedido encontrado", preview.resumo])
+
+    if preview.pergunta_confirmacao:
+        partes.append(f"> 📅 **{preview.pergunta_confirmacao}**")
     if preview.avisos:
-        partes.append("**Avisos:** " + " ".join(preview.avisos))
-    if preview.erros:
-        partes.append("**Pendências:** " + " ".join(preview.erros))
+        partes.append("> ⚠️ " + " ".join(preview.avisos))
     return "\n\n".join(partes)
+
+
+def _rotulo_botao(preview: PreviewAcao) -> str:
+    acao = _valor_enum(preview.acao)
+    if acao == "criar_pedido":
+        return "Confirmar data e criar pedido"
+    if acao == "cancelar_pedido":
+        return "Confirmar cancelamento"
+    if acao == "alterar_entrega":
+        return "Salvar alteração"
+    return "Ver pedido"
 
 
 def _estado_da_preview(tool_call: ToolCall, preview: PreviewAcao) -> dict[str, Any]:
     """Vincula o token à chamada e à data exata mostradas ao usuário."""
 
     return {
-        "fingerprint": _fingerprint(tool_call),
         "token": preview.token,
         "requer_confirmacao": preview.requer_confirmacao,
         "preview": _dump_model(preview),
@@ -181,18 +239,60 @@ def _preview_do_estado(estado: dict[str, Any]) -> PreviewAcao:
 
 def _resultado_markdown(resultado: Any) -> str:
     icone = "✅" if resultado.sucesso else "❌"
-    linhas = [f"### {icone} Resultado", resultado.mensagem]
+    titulo = "Operação concluída" if resultado.sucesso else "Operação não concluída"
+    linhas = [f"### {icone} {titulo}", resultado.mensagem]
     if resultado.protocolo:
         linhas.append(f"**Protocolo:** `{resultado.protocolo}`")
     if resultado.erros:
         linhas.append("**Erros:** " + " ".join(resultado.erros))
-    if resultado.dados:
-        linhas.append(
-            "```json\n"
-            + json.dumps(resultado.dados, ensure_ascii=False, indent=2, default=str)
-            + "\n```"
-        )
+    pedido = resultado.dados.get("pedido") if resultado.dados else None
+    if isinstance(pedido, dict):
+        detalhes = []
+        if pedido.get("numero_pedido") is not None:
+            detalhes.append(f"**Pedido:** #{pedido['numero_pedido']}")
+        if pedido.get("cliente"):
+            detalhes.append(f"**Cliente:** {pedido['cliente']}")
+        if pedido.get("status"):
+            status = str(pedido["status"]).replace("_", " ").capitalize()
+            detalhes.append(f"**Status:** {status}")
+        if pedido.get("data_entrega"):
+            data = str(pedido["data_entrega"])
+            try:
+                data = datetime.fromisoformat(data).strftime("%d/%m/%Y")
+            except ValueError:
+                pass
+            detalhes.append(f"**Entrega:** {data}")
+        if pedido.get("total") is not None:
+            detalhes.append(f"**Total:** {_moeda(pedido['total'])}")
+        if detalhes:
+            linhas.append("  \n".join(detalhes))
     return "\n\n".join(linhas)
+
+
+APP_CSS = """
+footer { display: none !important; }
+.gradio-container { max-width: 1080px !important; margin: 0 auto !important; }
+#hero {
+    background: linear-gradient(135deg, #1d4ed8 0%, #0f766e 100%);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 18px;
+    box-shadow: 0 12px 30px rgba(15, 118, 110, 0.16);
+}
+#hero h1, #hero p { color: white !important; margin-bottom: 6px; }
+#pedido-card, #revisao-card {
+    border: 1px solid var(--border-color-primary);
+    border-radius: 16px;
+    padding: 18px;
+    background: var(--block-background-fill);
+}
+#revisao-card { min-height: 170px; }
+#acao-principal { min-height: 48px; font-weight: 700; }
+#status-tecnico { opacity: 0.78; font-size: 0.9rem; }
+"""
+APP_THEME = gr.themes.Soft(
+    primary_hue="blue", secondary_hue="emerald", neutral_hue="slate"
+)
 
 
 def create_app(
@@ -212,9 +312,8 @@ def create_app(
     def analisar(texto: str):
         if not (texto or "").strip():
             return (
-                "",
-                "⚠️ Digite uma solicitação antes de analisar.",
-                gr.update(value=False, visible=False),
+                "### Escreva a solicitação\n\nConte o que deseja fazer em uma frase.",
+                gr.update(visible=False),
                 {},
                 "",
                 interpreter.backend_status,
@@ -223,16 +322,12 @@ def create_app(
             tool_call = interpreter.interpret(texto)
             preview = service.analisar(tool_call, data_referencia=_hoje())
             estado = _estado_da_preview(tool_call, preview)
+            estado["texto_original"] = texto.strip()
             return (
-                _json_tool_call(tool_call),
                 _confirmacao_markdown(preview),
                 gr.update(
-                    value=False,
-                    visible=preview.requer_confirmacao and preview.pode_executar,
-                    label=(
-                        preview.pergunta_confirmacao
-                        or "Revisei a prévia e confirmo esta operação"
-                    ),
+                    value=_rotulo_botao(preview),
+                    visible=preview.pode_executar,
                 ),
                 estado,
                 "",
@@ -240,62 +335,43 @@ def create_app(
             )
         except Exception as erro:  # erro de validação exibido na própria POC
             return (
-                "",
-                f"❌ Não foi possível preparar a ação: {erro}",
-                gr.update(value=False, visible=False),
+                f"❌ Não foi possível entender a solicitação: {erro}",
+                gr.update(visible=False),
                 {},
                 "",
                 interpreter.backend_status,
             )
 
-    def executar(editor: str, confirmou: bool, estado: dict[str, Any] | None):
+    def executar(texto: str, estado: dict[str, Any] | None):
         try:
-            tool_call = _tool_call_do_editor(editor)
-
-            # Se a prévia editável mudou, um novo token é criado e a confirmação
-            # anterior é descartada. Isso evita confirmar uma data e executar outra.
-            if not estado or estado.get("fingerprint") != _fingerprint(tool_call):
-                preview = service.analisar(tool_call, data_referencia=_hoje())
-                novo_estado = _estado_da_preview(tool_call, preview)
-                mensagem = (
-                    "✏️ **A prévia foi alterada e validada novamente.** "
-                    "Confira os dados e confirme outra vez antes de executar.\n\n"
-                    + _confirmacao_markdown(preview)
-                )
+            if not estado or not estado.get("token"):
                 return (
-                    mensagem,
-                    gr.update(
-                        value=False,
-                        visible=preview.requer_confirmacao and preview.pode_executar,
-                        label=(
-                            preview.pergunta_confirmacao
-                            or "Revisei a prévia e confirmo esta operação"
-                        ),
-                    ),
-                    novo_estado,
+                    "### Analise a solicitação primeiro",
+                    gr.update(visible=False),
+                    {},
+                    "Digite a operação e clique em **Entender solicitação**.",
+                    _tabela_pedidos(service),
+                    _tabela_catalogo(service),
+                )
+            if estado.get("texto_original") != (texto or "").strip():
+                return (
+                    "### A solicitação foi alterada\n\nClique em **Entender solicitação** novamente para revisar os novos dados.",
+                    gr.update(visible=False),
+                    {},
                     "",
                     _tabela_pedidos(service),
                     _tabela_catalogo(service),
                 )
 
-            # Usa exatamente a prévia exibida na análise. Não recalcula uma
-            # expressão relativa na virada do dia antes de confirmar o token.
+            # Usa exatamente a data exibida na revisão; não recalcula expressões
+            # relativas entre a análise e a confirmação.
             preview = _preview_do_estado(estado)
             if not preview.pode_executar:
                 return (
                     _confirmacao_markdown(preview),
-                    gr.update(value=False, visible=False),
+                    gr.update(visible=False),
                     estado,
-                    "❌ Complete ou corrija os campos indicados antes de executar.",
-                    _tabela_pedidos(service),
-                    _tabela_catalogo(service),
-                )
-            if preview.requer_confirmacao and not confirmou:
-                return (
-                    _confirmacao_markdown(preview),
-                    gr.update(value=False, visible=True),
-                    estado,
-                    "⚠️ Marque a confirmação da prévia (e da data resolvida) antes de executar.",
+                    "A operação não pode ser confirmada enquanto houver informações pendentes.",
                     _tabela_pedidos(service),
                     _tabela_catalogo(service),
                 )
@@ -303,7 +379,7 @@ def create_app(
             resultado = service.confirmar(estado["token"])
             return (
                 _confirmacao_markdown(preview),
-                gr.update(value=False, visible=False),
+                gr.update(visible=False),
                 {},
                 _resultado_markdown(resultado),
                 _tabela_pedidos(service),
@@ -311,10 +387,10 @@ def create_app(
             )
         except Exception as erro:
             return (
-                "❌ Revise a prévia.",
-                gr.update(value=False),
-                estado or {},
-                f"❌ A operação não foi executada: {erro}",
+                "### Não foi possível concluir",
+                gr.update(visible=False),
+                {},
+                f"❌ {erro} Analise a solicitação novamente.",
                 _tabela_pedidos(service),
                 _tabela_catalogo(service),
             )
@@ -322,26 +398,42 @@ def create_app(
     def atualizar_tabelas():
         return _tabela_pedidos(service), _tabela_catalogo(service)
 
-    with gr.Blocks(title="PedidoFlow Local") as demo:
+    def limpar():
+        return (
+            "",
+            "### Pronto para começar\n\nDescreva um pedido, uma consulta, um cancelamento ou uma alteração.",
+            gr.update(visible=False),
+            {},
+            "",
+        )
+
+    with gr.Blocks(title="PedidoFlow") as demo:
         estado_preview = gr.State({})
         gr.Markdown(
-            "# PedidoFlow Local\n"
-            "Transforme uma solicitação em uma operação segura de pedidos. "
-            "A LLM interpreta; regras determinísticas validam datas, estoque e execução."
+            "# PedidoFlow\n"
+            "**Pedidos sem formulário.** Escreva como você falaria com alguém da equipe; "
+            "o sistema organiza os dados e pede sua confirmação antes de salvar.",
+            elem_id="hero",
         )
-        backend = gr.Markdown(interpreter.backend_status)
 
         with gr.Row(equal_height=False):
-            with gr.Column(scale=6):
+            with gr.Column(scale=6, elem_id="pedido-card"):
                 solicitacao = gr.Textbox(
-                    label="Solicitação em português",
+                    label="O que você precisa?",
                     placeholder=(
-                        "Ex.: Cadastre para o Mercado Central 2 caixas de café, "
-                        "entrega na Av. Brasil, 500 até sexta."
+                        "Ex.: Crie um pedido para o Mercado Central com 2 caixas de café, "
+                        "entrega na Av. Brasil, 500 até sexta"
                     ),
-                    lines=5,
+                    lines=4,
+                    autofocus=True,
                 )
-                analisar_btn = gr.Button("Analisar solicitação", variant="primary")
+                with gr.Row():
+                    analisar_btn = gr.Button(
+                        "Entender solicitação",
+                        variant="primary",
+                        elem_id="acao-principal",
+                    )
+                    limpar_btn = gr.Button("Limpar")
                 gr.Examples(
                     examples=[
                         [
@@ -356,63 +448,73 @@ def create_app(
                         ],
                     ],
                     inputs=[solicitacao],
-                    label="Exemplos para testar",
+                    label="Exemplos rápidos",
                 )
 
-            with gr.Column(scale=5):
-                preview_json = gr.Code(
-                    label="Chamada de função (prévia editável)",
-                    language="json",
-                    lines=15,
-                    interactive=True,
+            with gr.Column(scale=5, elem_id="revisao-card"):
+                confirmacao_texto = gr.Markdown(
+                    "### Pronto para começar\n\n"
+                    "Descreva um pedido, uma consulta, um cancelamento ou uma alteração."
                 )
-                confirmacao_texto = gr.Markdown("Aguardando uma solicitação.")
-                confirmar = gr.Checkbox(
-                    label="Revisei a prévia e confirmo esta operação",
-                    value=False,
+                executar_btn = gr.Button(
+                    "Confirmar operação",
+                    variant="primary",
                     visible=False,
+                    elem_id="acao-principal",
                 )
-                executar_btn = gr.Button("Executar operação", variant="primary")
                 resultado = gr.Markdown()
 
         with gr.Row():
-            gr.Markdown("## Estado do sistema")
-            atualizar_btn = gr.Button("Atualizar tabelas", size="sm")
-        with gr.Tab("Pedidos"):
+            gr.Markdown("## Operação do comércio")
+            atualizar_btn = gr.Button("Atualizar", size="sm")
+        with gr.Tab("Pedidos recentes"):
             pedidos = gr.Dataframe(
                 headers=["Nº", "Cliente", "Status", "Entrega", "Total"],
                 value=_tabela_pedidos(service),
                 interactive=False,
             )
-        with gr.Tab("Catálogo e estoque"):
+        with gr.Tab("Estoque"):
             catalogo = gr.Dataframe(
                 headers=["Produto", "Unidade", "Preço", "Estoque"],
                 value=_tabela_catalogo(service),
                 interactive=False,
             )
+        with gr.Accordion("Informações técnicas", open=False):
+            backend = gr.Markdown(interpreter.backend_status, elem_id="status-tecnico")
+            gr.Markdown(
+                "A IA local interpreta a frase. Datas, estoque e gravação no SQLite "
+                "são validados pelo sistema antes da confirmação."
+            )
 
-        analisar_btn.click(
-            analisar,
-            inputs=[solicitacao],
-            outputs=[
-                preview_json,
-                confirmacao_texto,
-                confirmar,
-                estado_preview,
-                resultado,
-                backend,
-            ],
-        )
+        saidas_analise = [
+            confirmacao_texto,
+            executar_btn,
+            estado_preview,
+            resultado,
+            backend,
+        ]
+        analisar_btn.click(analisar, inputs=[solicitacao], outputs=saidas_analise)
+        solicitacao.submit(analisar, inputs=[solicitacao], outputs=saidas_analise)
         executar_btn.click(
             executar,
-            inputs=[preview_json, confirmar, estado_preview],
+            inputs=[solicitacao, estado_preview],
             outputs=[
                 confirmacao_texto,
-                confirmar,
+                executar_btn,
                 estado_preview,
                 resultado,
                 pedidos,
                 catalogo,
+            ],
+        )
+        limpar_btn.click(
+            limpar,
+            outputs=[
+                solicitacao,
+                confirmacao_texto,
+                executar_btn,
+                estado_preview,
+                resultado,
             ],
         )
         atualizar_btn.click(atualizar_tabelas, outputs=[pedidos, catalogo])
@@ -421,4 +523,4 @@ def create_app(
 
 
 if __name__ == "__main__":
-    create_app().launch(inbrowser=True)
+    create_app().launch(inbrowser=True, theme=APP_THEME, css=APP_CSS, footer_links=[])

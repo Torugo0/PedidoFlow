@@ -12,7 +12,7 @@ Empresas recebem solicitações como texto livre:
 
 O PedidoFlow interpreta a mensagem, valida os dados, apresenta uma prévia e somente executa a operação após a confirmação do usuário.
 
-O JSON não é o resultado final. Ele é apenas o contrato interno entre a LLM e o backend:
+O JSON não é o resultado final e não aparece para o usuário do comércio. Ele é apenas o contrato interno entre a LLM e o backend:
 
 ```json
 {
@@ -85,9 +85,9 @@ O `setup.ps1` cria o ambiente virtual e instala as dependências. O `run.ps1` us
 
 ### Uso da interface
 
-1. Escreva a solicitação e clique em **Analisar solicitação**.
-2. Confira a ação, os campos e a data resolvida.
-3. Marque a confirmação e clique em **Executar operação**.
+1. Escreva a solicitação e clique em **Entender solicitação**.
+2. Confira o resumo legível e a data resolvida; não é preciso preencher campos ou editar JSON.
+3. Clique no botão de confirmação exibido para a operação.
 4. Confira o protocolo, os pedidos e o estoque.
 
 ### Banco de dados
