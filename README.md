@@ -211,14 +211,15 @@ No GitHub, pesos e checkpoints são ignorados para evitar um repositório pesado
 
 ## GitHub e entrega
 
-Para publicar em um repositório vazio:
+Repositório privado do projeto: [Torugo0/PedidoFlow](https://github.com/Torugo0/PedidoFlow)
+
+Para baixar o projeto em outro computador com acesso autorizado:
 
 ```powershell
-git remote add origin https://github.com/USUARIO/REPOSITORIO.git
-git push -u origin main
+git clone https://github.com/Torugo0/PedidoFlow.git
 ```
 
-Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
+O professor precisa ser adicionado como colaborador ou receber acesso antes de abrir o link. Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
 
 Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.venv`, `.git`, caches, `data/pedidoflow.db` ou checkpoints intermediários.
 
@@ -228,6 +229,6 @@ Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.v
 - smoke test, treino reduzido e piloto A/B/C em GPU: concluídos;
 - experimento completo A/B/C: pendente de execução;
 - print da GPU no VS Code: pendente de captura;
-- publicação no GitHub: pendente de configurar o remoto.
+- publicação no GitHub: concluída em repositório privado.
 
 Os resultados preliminares não são apresentados como finais. Depois da execução completa, `results/RESULTADOS.md` deve receber o modelo vencedor e as métricas do conjunto de teste.
