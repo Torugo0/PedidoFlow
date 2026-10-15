@@ -49,6 +49,7 @@ Depois dessa etapa, o backend executa uma ação real no banco SQLite.
 Solicitação em português
           ↓
 Qwen3-1.7B interpreta a intenção e os campos
+(ou o modo de contingência, se o adapter não estiver disponível)
           ↓
 Backend valida produto, estoque, regras e data
           ↓
@@ -74,41 +75,129 @@ O banco e o estoque não mudam antes da confirmação. A data exata fica vincula
 
 ## Requisitos
 
-Windows 10/11, Python 3.10, Git, GPU NVIDIA compatível com CUDA e cerca de 12 GB livres para ambiente, cache e treinamento.
+- Windows 10 ou 11;
+- Python 3.10 de 64 bits disponível pelo comando `python`;
+- GPU NVIDIA e driver compatível com CUDA 12.8;
+- conexão com a internet durante a instalação e o primeiro carregamento do modelo;
+- aproximadamente 12 GB livres para ambiente, cache e treinamento.
+
+O Git só é necessário para clonar o repositório. Quem recebeu o arquivo ZIP pode executar o projeto sem instalar o Git.
 
 Ambiente validado: NVIDIA GeForce RTX 4060 de 8 GB, PyTorch 2.11.0, CUDA 12.8, compute capability 8.9 e QLoRA 4-bit NF4 em BF16.
 
-## Instalação e execução
+## Início rápido: instalação e execução
 
-Abra o PowerShell na pasta do projeto:
+### 1. Obtenha e abra o projeto
+
+Se recebeu o arquivo ZIP, extraia todo o conteúdo e abra a pasta extraída no VS Code.
+
+Se recebeu acesso ao repositório privado, também pode baixar pelo PowerShell:
+
+```powershell
+git clone https://github.com/Torugo0/PedidoFlow.git
+Set-Location .\PedidoFlow
+```
+
+No VS Code, abra **Terminal > Novo Terminal**. Confirme que o terminal é PowerShell e que o caminho mostrado termina na pasta que contém `setup.ps1`, `run.ps1` e `app.py`.
+
+### 2. Confira Python e GPU
+
+```powershell
+python --version
+nvidia-smi
+```
+
+O ambiente usado no desenvolvimento possui Python 3.10 e uma NVIDIA GeForce RTX 4060. O comando `nvidia-smi` deve reconhecer a placa e o driver.
+
+### 3. Prepare o ambiente — somente na primeira execução
+
+Execute o comando abaixo e aguarde até ele terminar e o prompt do PowerShell reaparecer:
 
 ```powershell
 .\setup.ps1
+```
+
+O `setup.ps1` cria a pasta `.venv`, instala as dependências, instala o projeto e executa um teste real na GPU. O diagnóstico é salvo em `results/gpu-info.json` e deve informar `GPU CUDA funcionando`.
+
+Se o PowerShell bloquear a execução do script, libere scripts somente para o terminal atual e tente novamente:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\setup.ps1
+```
+
+### 4. Inicie a aplicação
+
+Depois que o setup terminar, execute este segundo comando separadamente:
+
+```powershell
 .\run.ps1
 ```
 
-A interface estará em [http://127.0.0.1:7860](http://127.0.0.1:7860). Mantenha o terminal do `run.ps1` aberto enquanto estiver usando o sistema.
+> **Importante:** não escreva `.\setup.ps1 .\run.ps1` na mesma linha. Primeiro execute o setup, aguarde sua conclusão e somente depois execute o run.
 
-O `setup.ps1` cria o ambiente virtual e instala as dependências. O `run.ps1` usa `models/adapter_demo`; sem ele, a aplicação ainda funciona com o interpretador determinístico de contingência.
+O navegador deve abrir automaticamente em [http://127.0.0.1:7860](http://127.0.0.1:7860). Se ele não abrir, copie esse endereço para o navegador.
+
+`127.0.0.1` é um endereço local: a aplicação fica disponível apenas no computador em que `run.ps1` está sendo executado. Mantenha o terminal aberto durante o uso. Para encerrar, volte ao terminal e pressione `Ctrl+C`.
+
+Não é necessário ativar `.venv` manualmente; os scripts já usam o Python correto.
+
+### 5. Próximas execuções
+
+Depois da instalação inicial, basta abrir o PowerShell na pasta do projeto e executar:
+
+```powershell
+.\run.ps1
+```
+
+Execute `setup.ps1` novamente somente se a pasta `.venv` tiver sido removida ou se as dependências forem alteradas.
+
+### Modelo usado na demonstração
+
+A aplicação procura o adapter treinado e, quando ele está disponível, carrega o modelo-base `Qwen/Qwen3-1.7B`. No primeiro pedido, o download do modelo-base pelo Hugging Face pode levar alguns minutos.
+
+- O ZIP da entrega deve incluir `models/adapter_demo` para demonstrar a LLM local.
+- O GitHub não contém os pesos do adapter, pois arquivos grandes de modelo são ignorados. Um clone do GitHub inicia no modo determinístico de contingência.
+- Sem o adapter, a interface, as datas, as confirmações e o banco continuam funcionando, mas a interpretação não é feita pela LLM treinada.
+
+Para indicar um adapter manualmente:
+
+```powershell
+.\run.ps1 -AdapterPath ".\models\adapter_demo"
+```
 
 ### Uso da interface
 
 1. Escreva a solicitação e clique em **Entender solicitação**.
-2. Confira o resumo legível e a data resolvida; não é preciso preencher campos ou editar JSON.
-3. Clique no botão de confirmação exibido para a operação.
-4. Confira o protocolo, os pedidos e o estoque.
+2. Confira o resumo e a data exata apresentada; não é necessário preencher campos nem editar JSON.
+3. Confirme a data relativa, quando solicitado, e depois confirme a operação.
+4. Confira o protocolo, os pedidos e o estoque atualizados.
 
-### Banco de dados
-
-O banco SQLite é criado automaticamente em `data/pedidoflow.db` quando a aplicação inicia. Ele possui as tabelas `produtos`, `pedidos` e `pedido_itens`. O arquivo do banco e seus auxiliares `-wal` e `-shm` são dados locais de execução e não são enviados ao GitHub.
-
-Exemplos:
+Exemplos para testar:
 
 ```text
 Cadastre duas caixas de café para o Mercado Central, na Rua das Flores, 120, com entrega na sexta.
 Consulte o pedido 1.
 Altere a entrega do pedido 1 para a próxima terça.
 ```
+
+### Banco de dados
+
+Não é necessário instalar nem iniciar um servidor de banco. Ao iniciar a aplicação, o SQLite cria automaticamente `data/pedidoflow.db`, com as tabelas `produtos`, `pedidos` e `pedido_itens` e um estoque inicial.
+
+Os pedidos e o estoque permanecem salvos entre execuções. O banco e seus arquivos auxiliares `-wal` e `-shm` são locais, estão ignorados pelo Git e não são enviados ao GitHub.
+
+### Solução de problemas
+
+| Situação | Solução |
+|---|---|
+| PowerShell informa que a execução de scripts foi desabilitada | Execute `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` e tente novamente. A liberação vale somente para o terminal atual. |
+| Aparece `Ambiente .venv nao encontrado` | Execute `.\setup.ps1`, aguarde terminar e depois execute `.\run.ps1`. |
+| Aparece `CUDA indisponível` | Execute `nvidia-smi`, atualize o driver NVIDIA e confirme que a GPU é compatível com a versão CUDA indicada em `requirements.txt`. |
+| O navegador mostra `ERR_CONNECTION_REFUSED` | O servidor não está em execução. Rode `.\run.ps1` e mantenha o terminal aberto. |
+| A porta `7860` já está ocupada | Encerre a outra instância do PedidoFlow com `Ctrl+C` e execute `.\run.ps1` novamente. |
+| A interface informa modo de contingência | O adapter não foi localizado. Confirme a existência de `models/adapter_demo` ou informe o caminho com `-AdapterPath`. |
+| O primeiro pedido demora | O modelo-base pode estar sendo baixado. Mantenha a conexão com a internet e aguarde o carregamento. |
 
 ## Modelo e dataset
 
@@ -160,7 +249,7 @@ Esses números comprovam a execução do pipeline, mas não substituem o experim
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-A última verificação aprovou **49 testes**, cobrindo datas, interpretação, campos ausentes, confirmação, operações no banco, dataset, métricas e artefatos.
+A última verificação aprovou **54 testes**, cobrindo datas, interpretação, campos ausentes, confirmação, operações no banco, dataset, métricas, interface e artefatos.
 
 ## Evidência da GPU
 
@@ -189,25 +278,28 @@ run.ps1                Inicia a aplicação
 run_experiments.ps1    Executa os experimentos completos
 ```
 
-## Atendimento aos requisitos do CP
+## Checklist de atendimento ao CP
 
-| Requisito | Atendimento |
-|---|---|
-| Problema específico | Automação de pedidos em PT-BR |
-| LLM escolhida | Qwen3-1.7B |
-| Treino local | Pipeline QLoRA validado na RTX 4060 |
-| Parâmetros diferentes | Experimentos A, B e C |
-| Avaliação | Métricas automáticas e comparação com o modelo-base |
-| GPU | Treino e avaliação interrompem sem CUDA |
-| Frontend | Gradio com prévia e confirmação |
-| Print no VS Code | Comandos e destino preparados |
-| GitHub | Código, dataset, resultados e reprodução documentados |
+Legenda: **Concluído** = pronto e verificável; **Parcial** = há implementação e evidência preliminar, mas falta a execução final; **Pendente** = ainda exige uma ação do grupo.
 
-## Onde estão os pesos?
+| Requisito do CP | Status | Evidência no projeto | O que ainda precisa ser feito |
+|---|---|---|---|
+| Escolher um problema específico | ✅ Concluído | Texto livre para JSON estruturado e chamada de funções para criar, consultar, alterar e cancelar pedidos | Nada essencial |
+| Escolher uma LLM | ✅ Concluído | `Qwen/Qwen3-1.7B`, documentado e configurado no treinamento | Nada essencial |
+| Criar dataset | ✅ Concluído | `data/train.jsonl`, `validation.jsonl` e `test.jsonl`, totalizando 3.300 exemplos únicos | Nada essencial |
+| Treinar uma LLM local | 🟡 Parcial | `models/adapter_demo` e resultados de treino preliminar na RTX 4060 | Executar os treinamentos completos A/B/C |
+| Testar parâmetros diferentes | 🟡 Parcial | Configurações A/B/C e piloto reduzido comparando learning rate e rank LoRA | Executar A/B/C no dataset completo |
+| Avaliar as respostas | 🟡 Parcial | JSON válido, schema, ação, campos, exact match, latência e VRAM em `results/metricas.json` | Fazer a avaliação final completa |
+| Usar GPU no treino e na avaliação da LLM | 🟡 Parcial | Os scripts exigem CUDA; `results/gpu-info.json` comprova RTX 4060 e CUDA 12.8 | Repetir no experimento completo |
+| Criar frontend para o prompt | ✅ Concluído | Interface Gradio com solicitação, prévia, confirmação, pedidos e estoque | Nada essencial |
+| Tratar datas relativas | ✅ Concluído | `sexta` e outras expressões viram data exata e exigem confirmação | Nada essencial |
+| Executar uma ação real após o JSON | ✅ Concluído | Serviço e SQLite aplicam criação, consulta, alteração, cancelamento e estoque | Nada essencial |
+| Verificar o software | ✅ Concluído | 54 testes automatizados aprovados | Rodar novamente antes da entrega |
+| Mostrar a GPU no VS Code | 🔴 Pendente | Comandos e arquivo `results/gpu-info.json` já existem | Capturar `results/gpu-vscode.png` no terminal integrado |
+| Publicar código e documentação | 🟡 Parcial | Repositório privado [Torugo0/PedidoFlow](https://github.com/Torugo0/PedidoFlow) | Dar acesso ao professor e enviar as evidências finais |
+| Formar grupo de 4 a 5 pessoas | 🔴 Pendente | O README contém 3 integrantes | Adicionar pelo menos mais um integrante ou confirmar uma exceção com o professor |
 
-O modelo-base não fica no projeto: ele é baixado do Hugging Face e armazenado no cache local. O adapter de demonstração está em `models/adapter_demo` (aproximadamente 44 MB).
-
-No GitHub, pesos e checkpoints são ignorados para evitar um repositório pesado. O código, as configurações, o dataset e as métricas permitem reproduzir o treinamento.
+Os testes funcionais do sistema usam CPU, enquanto treino e avaliação da LLM exigem CUDA. Se a expressão “todos os testes utilizando GPU” da rubrica também incluir os testes unitários, esse entendimento deve ser confirmado com o professor.
 
 ## GitHub e entrega
 
@@ -219,16 +311,18 @@ Para baixar o projeto em outro computador com acesso autorizado:
 git clone https://github.com/Torugo0/PedidoFlow.git
 ```
 
-O professor precisa ser adicionado como colaborador ou receber acesso antes de abrir o link. Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
+O professor precisa ser adicionado como colaborador ou receber acesso antes de abrir o link. O repositório contém código, configurações, dataset e resultados reproduzíveis, mas não contém os pesos do modelo. Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
 
 Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.venv`, `.git`, caches, `data/pedidoflow.db` ou checkpoints intermediários.
 
-## Estado da entrega
+## Pendências antes da entrega final
 
-- aplicação, frontend, banco, datas, dataset e testes: concluídos;
-- smoke test, treino reduzido e piloto A/B/C em GPU: concluídos;
-- experimento completo A/B/C: pendente de execução;
-- print da GPU no VS Code: pendente de captura;
-- publicação no GitHub: concluída em repositório privado.
+1. Executar `run_experiments.ps1` para treinar A/B/C no dataset completo.
+2. Registrar o modelo vencedor e as métricas finais em `results/RESULTADOS.md`.
+3. Capturar o terminal do VS Code com `nvidia-smi` e o diagnóstico CUDA em `results/gpu-vscode.png`.
+4. Resolver a exigência de 4 a 5 integrantes; atualmente há 3 integrantes identificados.
+5. Dar acesso ao professor no repositório privado.
+6. Rodar os 54 testes novamente, revisar os arquivos gerados e enviar o último commit ao GitHub.
+7. Criar o ZIP manualmente, incluindo `models/adapter_demo` e excluindo `.venv`, `.git`, caches e `data/pedidoflow.db`.
 
-Os resultados preliminares não são apresentados como finais. Depois da execução completa, `results/RESULTADOS.md` deve receber o modelo vencedor e as métricas do conjunto de teste.
+Os resultados atuais são preliminares e não são apresentados como finais. Depois da execução completa, `results/RESULTADOS.md` deve receber o modelo vencedor e as métricas do conjunto de teste.

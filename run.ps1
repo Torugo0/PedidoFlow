@@ -20,6 +20,8 @@ try {
         $adapterWasChanged = $true
         Write-Host "Usando adapter informado explicitamente: $resolvedAdapter"
     }
+    Write-Host "Iniciando o PedidoFlow em http://127.0.0.1:7860"
+    Write-Host "Mantenha este terminal aberto. Para encerrar, pressione Ctrl+C."
     & $python "app.py"
     if ($LASTEXITCODE -ne 0) {
         throw "A aplicacao terminou com erro (codigo $LASTEXITCODE)."

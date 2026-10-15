@@ -523,4 +523,11 @@ def create_app(
 
 
 if __name__ == "__main__":
-    create_app().launch(inbrowser=True, theme=APP_THEME, css=APP_CSS, footer_links=[])
+    create_app().launch(
+        server_name="127.0.0.1",
+        server_port=7860,
+        inbrowser=True,
+        theme=APP_THEME,
+        css=APP_CSS,
+        footer_links=[],
+    )
