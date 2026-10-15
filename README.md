@@ -278,29 +278,6 @@ run.ps1                Inicia a aplicação
 run_experiments.ps1    Executa os experimentos completos
 ```
 
-## Checklist de atendimento ao CP
-
-Legenda: **Concluído** = pronto e verificável; **Parcial** = há implementação e evidência preliminar, mas falta a execução final; **Pendente** = ainda exige uma ação do grupo.
-
-| Requisito do CP | Status | Evidência no projeto | O que ainda precisa ser feito |
-|---|---|---|---|
-| Escolher um problema específico | ✅ Concluído | Texto livre para JSON estruturado e chamada de funções para criar, consultar, alterar e cancelar pedidos | Nada essencial |
-| Escolher uma LLM | ✅ Concluído | `Qwen/Qwen3-1.7B`, documentado e configurado no treinamento | Nada essencial |
-| Criar dataset | ✅ Concluído | `data/train.jsonl`, `validation.jsonl` e `test.jsonl`, totalizando 3.300 exemplos únicos | Nada essencial |
-| Treinar uma LLM local | 🟡 Parcial | `models/adapter_demo` e resultados de treino preliminar na RTX 4060 | Executar os treinamentos completos A/B/C |
-| Testar parâmetros diferentes | 🟡 Parcial | Configurações A/B/C e piloto reduzido comparando learning rate e rank LoRA | Executar A/B/C no dataset completo |
-| Avaliar as respostas | 🟡 Parcial | JSON válido, schema, ação, campos, exact match, latência e VRAM em `results/metricas.json` | Fazer a avaliação final completa |
-| Usar GPU no treino e na avaliação da LLM | 🟡 Parcial | Os scripts exigem CUDA; `results/gpu-info.json` comprova RTX 4060 e CUDA 12.8 | Repetir no experimento completo |
-| Criar frontend para o prompt | ✅ Concluído | Interface Gradio com solicitação, prévia, confirmação, pedidos e estoque | Nada essencial |
-| Tratar datas relativas | ✅ Concluído | `sexta` e outras expressões viram data exata e exigem confirmação | Nada essencial |
-| Executar uma ação real após o JSON | ✅ Concluído | Serviço e SQLite aplicam criação, consulta, alteração, cancelamento e estoque | Nada essencial |
-| Verificar o software | ✅ Concluído | 54 testes automatizados aprovados | Rodar novamente antes da entrega |
-| Mostrar a GPU no VS Code | 🔴 Pendente | Comandos e arquivo `results/gpu-info.json` já existem | Capturar `results/gpu-vscode.png` no terminal integrado |
-| Publicar código e documentação | 🟡 Parcial | Repositório privado [Torugo0/PedidoFlow](https://github.com/Torugo0/PedidoFlow) | Dar acesso ao professor e enviar as evidências finais |
-| Formar grupo de 4 a 5 pessoas | 🔴 Pendente | O README contém 3 integrantes | Adicionar pelo menos mais um integrante ou confirmar uma exceção com o professor |
-
-Os testes funcionais do sistema usam CPU, enquanto treino e avaliação da LLM exigem CUDA. Se a expressão “todos os testes utilizando GPU” da rubrica também incluir os testes unitários, esse entendimento deve ser confirmado com o professor.
-
 ## GitHub e entrega
 
 Repositório privado do projeto: [Torugo0/PedidoFlow](https://github.com/Torugo0/PedidoFlow)
