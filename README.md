@@ -156,8 +156,8 @@ Execute `setup.ps1` novamente somente se a pasta `.venv` tiver sido removida ou 
 
 A aplicação procura o adapter treinado e, quando ele está disponível, carrega o modelo-base `Qwen/Qwen3-1.7B`. No primeiro pedido, o download do modelo-base pelo Hugging Face pode levar alguns minutos.
 
-- O ZIP da entrega deve incluir `models/adapter_demo` para demonstrar a LLM local.
-- O GitHub não contém os pesos do adapter, pois arquivos grandes de modelo são ignorados. Um clone do GitHub inicia no modo determinístico de contingência.
+- O adapter treinado está em `models/adapter_demo` e acompanha o projeto no GitHub e no ZIP.
+- O modelo-base completo não é enviado; ele é baixado automaticamente do Hugging Face no primeiro uso.
 - Sem o adapter, a interface, as datas, as confirmações e o banco continuam funcionando, mas a interpretação não é feita pela LLM treinada.
 
 Para indicar um adapter manualmente:
@@ -199,39 +199,39 @@ Os pedidos e o estoque permanecem salvos entre execuções. O banco e seus arqui
 | A interface informa modo de contingência | O adapter não foi localizado. Confirme a existência de `models/adapter_demo` ou informe o caminho com `-AdapterPath`. |
 | O primeiro pedido demora | O modelo-base pode estar sendo baixado. Mantenha a conexão com a internet e aguarde o carregamento. |
 
-## Modelo e dataset
+## Modelo, treinamento e resultados
 
-Foi escolhido o `Qwen/Qwen3-1.7B` por ser pequeno, multilíngue e compatível com QLoRA em uma GPU de 8 GB.
+Foi escolhido o `Qwen/Qwen3-1.7B` por ser pequeno, multilíngue e compatível com QLoRA em uma GPU de 8 GB. O modelo não foi criado do zero: foi realizado um fine-tuning local que gerou o adapter LoRA disponível em `models/adapter_demo`.
 
-| Conjunto | Exemplos |
+### Dataset
+
+O projeto disponibiliza 3.300 entradas sintéticas e únicas:
+
+| Conjunto | Exemplos disponíveis |
 |---|---:|
 | Treino | 2.400 |
 | Validação | 300 |
 | Teste | 600 |
 
-As 3.300 entradas são únicas. Os três conjuntos usam famílias de templates diferentes para reduzir vazamento entre treino e avaliação.
+Para manter a POC simples e compatível com o tempo e o hardware disponíveis, o adapter entregue foi treinado com **400 exemplos de treino e 100 de validação**. Os conjuntos completos permanecem no repositório para consulta ou extensões futuras.
 
-## Treinamento e parâmetros
+### Teste de parâmetros
 
-Modelo, dataset, seed, épocas e quantização permanecem fixos. Os experimentos variam taxa de aprendizado e rank LoRA:
+Também foi executado na RTX 4060 um piloto A/B/C. Cada configuração usou 32 exemplos de treino, 16 de validação durante o treino e 10 exemplos na avaliação comparativa.
 
-| Experimento | Rank | Alpha | Learning rate |
-|---|---:|---:|---:|
-| A | 8 | 16 | 1e-4 |
-| B | 8 | 16 | 2e-4 |
-| C | 16 | 32 | 2e-4 |
+| Experimento | Rank | Alpha | Learning rate | Correspondência exata |
+|---|---:|---:|---:|---:|
+| A | 8 | 16 | 1e-4 | 0% |
+| B | 8 | 16 | 2e-4 | 10% |
+| C | 16 | 32 | 2e-4 | 40% |
 
-Execute o processo completo com:
+O piloto mostra que configurações diferentes produziram resultados diferentes. A configuração C foi a melhor **somente nesse microteste de 10 casos**; como rank e alpha mudaram juntos, o experimento não isola o efeito de cada parâmetro nem permite generalizar a conclusão.
 
-```powershell
-.\run_experiments.ps1
-```
+O adapter entregue continua sendo a configuração B: ele recebeu o treinamento maior, com 400 exemplos de treino e 100 de validação, e foi avaliado separadamente em 20 casos. Os adapters A/B/C do piloto eram execuções pequenas voltadas apenas à comparação de parâmetros.
 
-O script treina A/B/C na GPU, compara os três somente na validação, escolhe o melhor adapter e, por fim, compara o vencedor com o modelo-base no teste. Métricas e gráficos são gravados em `results/`. O conjunto de teste não é usado para escolher hiperparâmetros.
+### Avaliação do adapter entregue
 
-## Resultados preliminares
-
-Uma execução reduzida validou todo o pipeline na RTX 4060. Em 20 exemplos:
+O Qwen-base e o `adapter_demo`, treinado com a configuração B em uma amostra maior, foram avaliados nos mesmos 20 exemplos:
 
 | Métrica | Modelo-base | Adapter B |
 |---|---:|---:|
@@ -241,7 +241,19 @@ Uma execução reduzida validou todo o pipeline na RTX 4060. Em 20 exemplos:
 | Campos corretos | 11,22% | 98,31% |
 | Correspondência exata | 0% | 85% |
 
-Esses números comprovam a execução do pipeline, mas não substituem o experimento completo. Consulte `results/RESULTADOS.md`. A avaliação também registra latência, pico de VRAM e resultados por ação.
+O resultado mostra que o ajuste aprendeu o contrato JSON do PedidoFlow: a validade de schema passou de 0% para 90% e a correspondência exata passou de 0% para 85%. A avaliação também registra latência, pico de VRAM e resultados por ação.
+
+Esta é uma **avaliação final da POC em escala reduzida**. Os tamanhos das amostras são informados para deixar o resultado transparente e auditável, sem apresentá-lo como uma avaliação estatística de produção.
+
+Evidências disponíveis:
+
+- `results/RESULTADOS.md`: metodologia, métricas e limitações;
+- `results/metricas.json`: resultados estruturados;
+- `results/comparacao_modelos.png`: modelo-base contra adapter;
+- `results/comparacao_parametros.png`: piloto A/B/C;
+- `results/gpu-info.json`: GPU, CUDA, PyTorch, VRAM e teste CUDA.
+
+O script `run_experiments.ps1` mantém disponível uma extensão opcional com o dataset completo, mas ela não é necessária para executar ou demonstrar a versão entregue.
 
 ## Testes automatizados
 
@@ -250,6 +262,8 @@ Esses números comprovam a execução do pipeline, mas não substituem o experim
 ```
 
 A última verificação aprovou **54 testes**, cobrindo datas, interpretação, campos ausentes, confirmação, operações no banco, dataset, métricas, interface e artefatos.
+
+Esses testes verificam as regras e a integração do sistema e podem rodar na CPU. O fine-tuning, a avaliação da LLM e o teste de carregamento do adapter foram executados com CUDA na GPU, conforme `results/gpu-info.json` e `results/RESULTADOS.md`.
 
 ## Evidência da GPU
 
@@ -270,12 +284,12 @@ src/pedidoflow/        Domínio, datas, banco e interpretação
 training/              Dataset, treino, avaliação e diagnóstico
 training/configs/      Parâmetros A, B e C
 data/                  Treino, validação e teste
-models/adapter_demo/   Adapter preliminar usado na demonstração
+models/adapter_demo/   Adapter LoRA treinado usado na demonstração
 results/               Métricas, gráficos e evidências
 tests/                 Testes automatizados
 setup.ps1              Prepara o ambiente
 run.ps1                Inicia a aplicação
-run_experiments.ps1    Executa os experimentos completos
+run_experiments.ps1    Extensão opcional com experimentos completos
 ```
 
 ## GitHub e entrega
@@ -288,18 +302,13 @@ Para baixar o projeto em outro computador com acesso autorizado:
 git clone https://github.com/Torugo0/PedidoFlow.git
 ```
 
-O professor precisa ser adicionado como colaborador ou receber acesso antes de abrir o link. O repositório contém código, configurações, dataset e resultados reproduzíveis, mas não contém os pesos do modelo. Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
+O professor precisa ser adicionado como colaborador ou receber acesso antes de abrir o link. O repositório contém código, configurações, dataset, resultados e o adapter LoRA treinado. O modelo-base Qwen é baixado no primeiro uso. Não envie `.venv`, caches, banco SQLite, checkpoints ou credenciais.
 
 Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.venv`, `.git`, caches, `data/pedidoflow.db` ou checkpoints intermediários.
 
 ## Pendências antes da entrega final
 
-1. Executar `run_experiments.ps1` para treinar A/B/C no dataset completo.
-2. Registrar o modelo vencedor e as métricas finais em `results/RESULTADOS.md`.
-3. Capturar o terminal do VS Code com `nvidia-smi` e o diagnóstico CUDA em `results/gpu-vscode.png`.
-4. Resolver a exigência de 4 a 5 integrantes; atualmente há 3 integrantes identificados.
-5. Dar acesso ao professor no repositório privado.
-6. Rodar os 54 testes novamente, revisar os arquivos gerados e enviar o último commit ao GitHub.
-7. Criar o ZIP manualmente, incluindo `models/adapter_demo` e excluindo `.venv`, `.git`, caches e `data/pedidoflow.db`.
-
-Os resultados atuais são preliminares e não são apresentados como finais. Depois da execução completa, `results/RESULTADOS.md` deve receber o modelo vencedor e as métricas do conjunto de teste.
+1. Capturar o terminal do VS Code com `nvidia-smi` e o diagnóstico CUDA em `results/gpu-vscode.png`.
+2. Resolver a exigência de 4 a 5 integrantes; atualmente há 3 integrantes identificados.
+3. Dar acesso ao professor no repositório privado.
+4. Criar o ZIP final, excluindo `.venv`, `.git`, caches, banco SQLite e checkpoints intermediários.

@@ -14,11 +14,15 @@ data/*.db-*
 # Pesos e artefatos grandes
 models/*
 !models/README.md
+!models/adapter_demo/
+!models/adapter_demo/**
 checkpoints/
 *.safetensors
 *.bin
 *.pt
 *.pth
+!models/adapter_demo/adapter_model.safetensors
+!models/adapter_demo/training_args.bin
 
 # Relatorios regeneraveis e sistema
 results/**/predictions*.jsonl

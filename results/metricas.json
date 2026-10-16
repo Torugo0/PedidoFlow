@@ -1,6 +1,7 @@
 {
-  "status": "resultados_preliminares",
-  "aviso": "O piloto comprova o pipeline, mas nao substitui o experimento completo A/B/C.",
+  "status": "poc_reduzida_concluida",
+  "escopo": "Resultados finais adotados para a POC reduzida do PedidoFlow.",
+  "conclusao": "O adapter_demo superou o modelo-base no schema, nos campos e no exact match; no piloto A/B/C, configuracoes diferentes produziram resultados diferentes.",
   "hardware": {
     "gpu": "NVIDIA GeForce RTX 4060",
     "vram_gb": 8.0,
@@ -13,7 +14,7 @@
     "dataset_sha256": "b69b7c568945edbc9527091bcea68a2e64f1bb0bf8f0eab64285e61b908c4c14",
     "total_no_dataset": 600,
     "exemplos_avaliados": 20,
-    "avaliacao_parcial": true,
+    "tipo_avaliacao": "amostral",
     "modelo_base": {
       "valid_json_rate": 1.0,
       "schema_valid_rate": 0.0,
@@ -25,9 +26,12 @@
     },
     "adapter_demo": {
       "caminho_local": "models/adapter_demo",
-      "adapter_sha256": "65308c1fa674accc097a2065a76b24bd024271f9ad6ef5895e1832b058079d91",
-      "treino_preliminar_exemplos": 400,
-      "validacao_preliminar_exemplos": 100,
+      "adapter_sha256": "a3a4ebd12999fecbbe7158d9cd0e8973b51ca63e8cc86d28389dab4598ec7160",
+      "adapter_sha256_escopo": "Pacote entregue em models/adapter_demo.",
+      "adapter_sha256_original_avaliacao": "65308c1fa674accc097a2065a76b24bd024271f9ad6ef5895e1832b058079d91",
+      "adapter_weights_sha256": "1712ef1231670af22c84344f6ce0f8ca956279d06928c7caebb085310408704b",
+      "treino_exemplos": 400,
+      "validacao_exemplos": 100,
       "valid_json_rate": 1.0,
       "schema_valid_rate": 0.9,
       "action_accuracy": 0.9,
@@ -38,14 +42,17 @@
     }
   },
   "piloto_parametros": {
+    "finalidade": "Comparar hiperparametros em escala reduzida para atender ao escopo da POC.",
     "dataset": "data/validation.jsonl",
     "dataset_sha256": "506a7a9566f1b9dbee771dbddad638e877c0c8279d13f82c1cbcf8ab0f3e8e34",
     "treino_por_run": 32,
     "validacao_durante_treino": 16,
     "exemplos_avaliados_por_run": 10,
-    "avaliacao_parcial": true,
+    "tipo_avaliacao": "piloto_amostral",
+    "melhor_resultado_no_piloto": "run_c",
     "run_a": {
       "lora_rank": 8,
+      "lora_alpha": 16,
       "learning_rate": 0.0001,
       "train_loss": 0.611215,
       "schema_valid_rate": 0.0,
@@ -56,6 +63,7 @@
     },
     "run_b": {
       "lora_rank": 8,
+      "lora_alpha": 16,
       "learning_rate": 0.0002,
       "train_loss": 0.41587,
       "schema_valid_rate": 0.1,
@@ -66,6 +74,7 @@
     },
     "run_c": {
       "lora_rank": 16,
+      "lora_alpha": 32,
       "learning_rate": 0.0002,
       "train_loss": 0.328157,
       "schema_valid_rate": 0.5,
@@ -74,5 +83,11 @@
       "exact_match_rate": 0.4,
       "peak_training_vram_gb": 3.187
     }
-  }
+  },
+  "limitacoes": [
+    "O adapter foi treinado com 400 exemplos e validado com 100 exemplos.",
+    "A comparacao entre modelo-base e adapter usa uma amostra de 20 casos.",
+    "O piloto A/B/C usa 32 exemplos de treino, 16 de validacao e avalia 10 casos por configuracao.",
+    "Amostras maiores e repeticoes com sementes diferentes seriam necessarias para estimar generalizacao de producao."
+  ]
 }
