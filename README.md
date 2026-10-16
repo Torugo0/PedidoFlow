@@ -251,7 +251,9 @@ Evidências disponíveis:
 - `results/metricas.json`: resultados estruturados;
 - `results/comparacao_modelos.png`: modelo-base contra adapter;
 - `results/comparacao_parametros.png`: piloto A/B/C;
-- `results/gpu-info.json`: GPU, CUDA, PyTorch, VRAM e teste CUDA.
+- `results/gpu-info.json`: GPU, CUDA, PyTorch, VRAM e teste CUDA;
+- `results/gpu-vscode-nvidia-smi.png`: GPU reconhecida no terminal do VS Code;
+- `results/gpu-vscode-cuda-test.png`: execução real do diagnóstico CUDA.
 
 O script `run_experiments.ps1` mantém disponível uma extensão opcional com o dataset completo, mas ela não é necessária para executar ou demonstrar a versão entregue.
 
@@ -274,7 +276,15 @@ nvidia-smi
 .\.venv\Scripts\python.exe training\check_gpu.py --output results\gpu-info.json
 ```
 
-O diagnóstico realiza uma multiplicação de matrizes na GPU. No print da entrega, deixe visíveis o VS Code, a RTX 4060, PyTorch, CUDA e `GPU CUDA funcionando`. Salve como `results/gpu-vscode.png`.
+O diagnóstico realiza uma multiplicação de matrizes na GPU. As capturas abaixo comprovam que a NVIDIA GeForce RTX 4060 foi reconhecida no VS Code e que o PyTorch executou o teste com CUDA.
+
+### GPU reconhecida pelo driver NVIDIA
+
+![NVIDIA GeForce RTX 4060 reconhecida pelo nvidia-smi no terminal do VS Code](results/gpu-vscode-nvidia-smi.png)
+
+### Teste real do PyTorch com CUDA
+
+![Diagnóstico do PyTorch mostrando GPU CUDA funcionando](results/gpu-vscode-cuda-test.png)
 
 ## Estrutura
 
@@ -308,7 +318,6 @@ Ao compactar a pasta manualmente, inclua `models/adapter_demo` e não inclua `.v
 
 ## Pendências antes da entrega final
 
-1. Capturar o terminal do VS Code com `nvidia-smi` e o diagnóstico CUDA em `results/gpu-vscode.png`.
-2. Resolver a exigência de 4 a 5 integrantes; atualmente há 3 integrantes identificados.
-3. Dar acesso ao professor no repositório privado.
-4. Criar o ZIP final, excluindo `.venv`, `.git`, caches, banco SQLite e checkpoints intermediários.
+1. Resolver a exigência de 4 a 5 integrantes; atualmente há 3 integrantes identificados.
+2. Dar acesso ao professor no repositório privado.
+3. Criar o ZIP final, excluindo `.venv`, `.git`, caches, banco SQLite e checkpoints intermediários.
